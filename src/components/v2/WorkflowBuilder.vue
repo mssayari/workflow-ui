@@ -123,7 +123,8 @@ const copyJson = () => {
 <!--              class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">-->
 <!--            Copy JSON-->
 <!--          </button>-->
-          <a href="https://local.relanote.com" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Documentation</a>
+          <a href="https://gist.github.com/mssayari/6ec4bc419e8225015ca5922174c9b970" target="_blank"
+             class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Documentation</a>
         </div>
         <pre class="p-4 text-green-400 overflow-auto h-[calc(100%-4rem)]">{{ prettyWorkflow }}</pre>
       </div>
