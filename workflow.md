@@ -1,4 +1,4 @@
-# Fully dynamic Automation System (Zapier-style)
+# Fully abstract and dynamic Automation System
 
 This document describes a dynamic and modular automation system, inspired by Zapier. The system allows users to create
 workflows that can be triggered by different events and execute chains of

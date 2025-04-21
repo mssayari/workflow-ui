@@ -1,14 +1,11 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { actionFormSchema} from '@/utils/actionFormSchema.js'
+import {onMounted, ref, watch} from 'vue'
 import JsonItem  from "./JsonItem.vue";
+
+
 const props = defineProps({
-  type: {
-    type: String,
-    required: true
-  },
-  provider: {
-    type: String,
+  schema: {
+    type: Object,
     required: true
   },
   config: {
@@ -19,22 +16,21 @@ const props = defineProps({
 
 const emit = defineEmits(['update:config'])
 
-const schema = computed(() => actionFormSchema[props.type][props.provider] || {})
-
 const localConfig = ref({ ...props.config })
 const jsonFields = ref({})
 
 // Watch for external config changes
 watch(() => props.config, (newConfig) => {
   localConfig.value = { ...newConfig }
-  initializeJsonFields()
+  // initializeJsonFields()
 }, { deep: true })
 
 
-// Emit config on change
+// // Emit config on change
 watch(localConfig, (newConfig) => {
   emit('update:config', newConfig)
 }, { deep: true, immediate: true })
+
 
 // Initialize JSON field strings from config
 const initializeJsonFields = () => {
@@ -46,18 +42,22 @@ const initializeJsonFields = () => {
   }
 }
 
+
+onMounted(() => {
+})
+
 </script>
 
 <template>
   <div class="space-y-4">
     <template v-for="(field, key) in schema" :key="key">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.title }}</label>
 
         <!-- Input field -->
-        <input v-if="field.type === 'input'"
+        <input v-if="field.type === 'string' || field.type === 'number'"
                v-model="localConfig[key]"
-               :type="field.inputType || 'text'"
+                :type="field.type === 'number' ? 'number' : 'text'"
                :placeholder="field.placeholder"
                class="w-full px-3 py-2 border border-gray-300 rounded-md"
         >

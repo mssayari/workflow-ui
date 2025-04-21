@@ -1,86 +1,137 @@
 <script setup>
-import {ref, watch} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import DynamicConfig from './DynamicConfig.vue'
-import {initializeConfigFromSchema, getActionTypes, getProviders} from '@/utils/actionFormSchema.js'
+import {useActionStore} from "@/stores/action.js";
 
 
 const props = defineProps({
-  action: {
-    type: Object,
-    required: true
-  }
+  action: [Object, null],
 })
 
+
+const isReady = ref(false)
+const actionStore = useActionStore()
 const emit = defineEmits(['save', 'cancel'])
 
-const formData = ref({
-  ...props.action
+const selectedActionIndex = ref(0)
+const selectedProviderIndex = ref(0)
+const form  = ref({
+  id: null,
+  name: '',
+  type_id: 0,
+  provider_id: 0,
+  config: {}
 })
 
 const updateConfig = (newConfig) => {
-  if (JSON.stringify(formData.value.config) !== JSON.stringify(newConfig)) {
-    formData.value.config = newConfig
+  if (JSON.stringify(form.value.config) !== JSON.stringify(newConfig)) {
+    form.value.config = newConfig
   }
 }
 
 const handleSubmit = () => {
-
   // remove empty key, values for json fields
-  for (const [key, value] of Object.entries(formData.value.config)) {
-    if (typeof value === 'object' && value !== null) {
-      for (const [k, v] of Object.entries(value)) {
-        if (v === '' || v === null) {
-          delete formData.value.config[key][k]
-        }
-      }
-    }
-  }
+  // for (const [key, value] of Object.entries(formData.value.config)) {
+  //   if (typeof value === 'object' && value !== null) {
+  //     for (const [k, v] of Object.entries(value)) {
+  //       if (v === '' || v === null) {
+  //         delete formData.value.config[key][k]
+  //       }
+  //     }
+  //   }
+  // }
 
+  form.value.type_id = actionStore.actions[selectedActionIndex.value].id
+  form.value.provider_id = actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].id
 
-  emit('save', {...formData.value})
+  emit('save', form.value)
 }
 
 
-// watch type if it changes, update provider
-watch(() => formData.value.type, (newType) => {
-  const newProviders = getProviders(newType)
-  if (!newProviders.some(provider => provider.value === formData.value.provider)) {
-    formData.value.provider = newProviders[0].value
+const schema = computed(() => {
+  return actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].form_schema.properties
+})
+
+const initConfig = () => {
+  console.log('init called!')
+  form.value.config = {}
+
+  for (const [key, value] of Object.entries(schema.value)) {
+    switch (value.type) {
+      case 'string':
+        form.value.config[key] = props.action?.config[key] || ''
+        break
+      case 'number':
+        form.value.config[key] = props.action?.config[key] || 0
+        break
+      case 'boolean':
+        form.value.config[key] = props.action?.config[key] || false
+        break
+      case 'json':
+        form.value.config[key] = props.action?.config[key] || {}
+        break
+      default:
+        form.value.config[key] = props.action?.config[key] || null
+    }
   }
+}
+
+// watch selectedActionIndex and selectedProviderIndex if they change, update config
+watch([selectedActionIndex, selectedProviderIndex], ([newActionIndex, newProviderIndex]) => {
+  initConfig()
 })
 
-// watch provider if it changes, update config
-watch(() => formData.value.provider, (newProvider) => {
-  const newConfig = initializeConfigFromSchema(formData.value.type, newProvider)
-  formData.value.config = {...newConfig}
-})
 
+onMounted(() => {
+
+  if (props.action !== null){
+    form.value = {...props.action}
+    selectedActionIndex.value = actionStore.actions.findIndex(action => action.id === form.value.type_id)
+    selectedProviderIndex.value = actionStore.actions[selectedActionIndex.value].providers.findIndex(provider => provider.id === form.value.provider_id)
+  }else{
+    initConfig()
+  }
+
+  isReady.value = true
+})
 
 </script>
 <template>
-  <form @submit.prevent="handleSubmit" class="space-y-4">
-    <div class="w-full flex items-center justify-between gap-2">
-      <div class="flex-1">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
-        <select v-model="formData.type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-          <option v-for="(action,index) in getActionTypes()" :key="index" :value="action.value">
-            {{ action.label }}
-          </option>
-        </select>
+  <form @submit.prevent="handleSubmit" class="space-y-4" v-if="isReady">
+    <div class="w-full space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Action Name</label>
+        <input type="text" v-model="form.name" class="w-full p-2 border border-gray-300 rounded-md"
+               placeholder="Enter action name"/>
+        <span class="text-sm text-gray-500 ps-1">This name will be used to identify the action in the workflow.</span>
       </div>
-      <div class="flex-1">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-        <select v-model="formData.provider" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-          <option v-for="(provider,index) in getProviders(formData.type)" :key="index" :value="provider.value">
-            {{ provider.label }}
+      <div class="">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+        <select v-model="selectedActionIndex" class="w-full p-2 border border-gray-300 rounded-md">
+          <option v-for="(action,index) in actionStore.actions" :key="index" :value="index">
+            {{ action.name }}
           </option>
         </select>
+        <span class="text-sm text-gray-500 ps-1">{{ actionStore.actions[selectedActionIndex].description }}</span>
+      </div>
+      <div class="">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+        <select v-model="selectedProviderIndex" :disabled="!actionStore.actions[selectedActionIndex]"
+                class="w-full p-2 border border-gray-300 rounded-md">
+          <option v-for="(provider,index) in actionStore.actions[selectedActionIndex]?.providers || []" :key="index"
+                  :value="index">
+            {{ provider.name }}
+          </option>
+        </select>
+        <span
+            class="text-sm text-gray-500 ps-1">{{
+            actionStore.actions[selectedActionIndex].providers[selectedProviderIndex].description
+          }}</span>
       </div>
     </div>
 
     <!-- Dynamic config fields based on action type -->
-    <DynamicConfig :type="formData.type" :provider="formData.provider" :config="formData.config"
-                   @update:config="updateConfig"/>
+    <dynamic-config :config="form.config" @update:config="updateConfig" :schema="schema"/>
 
     <div class="flex justify-end gap-3 mt-6">
       <button type="button" @click="$emit('cancel')"
