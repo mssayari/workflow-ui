@@ -12,6 +12,72 @@ export const useWorkflowStore = defineStore('workflow', () => {
     const prettyWorkflow = computed(() => JSON.stringify(workflow.value, null, 2))
 
 
+    const isActionsModalOpen = ref(false)
+    const selectedAction = ref(null)
+    const previousActionId = ref(null)
+    const isInnerAction = ref(false)
+    const openActionModal = (action = null, link = null, isInner = false) => {
+        selectedAction.value = action
+        previousActionId.value = link
+        isInnerAction.value = isInner
+        isActionsModalOpen.value = true
+    }
+
+    const closeActionModal = () => {
+        isActionsModalOpen.value = false
+        selectedAction.value = null
+        previousActionId.value = null
+    }
+
+    const saveAction = (actionData) => {
+        if (selectedAction.value) {
+            const index = workflow.value.actions.findIndex(a => a.id === selectedAction.value.id)
+            workflow.value.actions[index] = {...actionData}
+            updateAction(actionData).then(() => {
+                closeActionModal()
+            });
+        } else {
+            const newAction = {...actionData}
+
+            // TODO: add linking to previous action
+
+            createAction(newAction).then((createdAction) => {
+                if (previousActionId.value) {
+                    linkAction(createdAction, previousActionId.value).then(() => {
+                        closeActionModal()
+                    })
+                }
+                closeActionModal()
+            });
+        }
+    }
+
+    const linkAction = (action, linkId) => {
+        return new Promise((resolve, reject) => {
+            const index = workflow.value.actions.findIndex(a => a.id === linkId)
+            if (index !== -1) {
+                axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${linkId}`, {on_success: action.id})
+                    .then(response => {
+                        if (response.data.success) {
+                            const index = workflow.value.actions.findIndex(a => a.id === response.data.data.id)
+                            workflow.value.actions[index] = response.data.data
+                            console.log('Action Linked successfully');
+                            resolve(true);
+                        } else {
+                            console.error('Failed to Link action:', response.data.message);
+                            reject(false);
+                        }
+                    })
+                    .catch(error => {
+                        reject(false);
+                        console.error('Error on linking action:', error);
+                    });
+            } else {
+                console.error(`Action with id ${action.id} not found`);
+            }
+        });
+    }
+
     //workflow modal
     const isWorkflowModalOpen = ref(false)
     const openWorkflowModal = () => {
@@ -138,52 +204,69 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
     }
 
-    const addAction = (action) => {
-        axios.post(`${baseURL}/workflows/${workflow.value.id}/actions`, action)
-            .then(response => {
-                if (response.data.success) {
-                    workflow.value.actions.push(action)
-                    console.log('Action added successfully');
-                } else {
-                    console.error('Failed to add action:', response.data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error adding action:', error);
-            });
-    }
-
-    const updateAction = (action) => {
-        const index = workflow.value.actions.findIndex(a => a.id === action.id)
-        if (index !== -1) {
-            axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${action.id}`, action)
+    const createAction = (action) => {
+        return new Promise((resolve, reject) => {
+            axios.post(`${baseURL}/workflows/${workflow.value.id}/actions`, action)
                 .then(response => {
                     if (response.data.success) {
-                        workflow.value.actions[index] = action
-                        console.log('Action updated successfully');
+                        workflow.value.actions.push(response.data.data)
+                        console.log('Action added successfully');
+                        resolve(response.data.data);
                     } else {
-                        console.error('Failed to update action:', response.data.message);
+                        console.error('Failed to add action:', response.data.message);
+                        reject(false);
                     }
                 })
                 .catch(error => {
-                    console.error('Error updating action:', error);
+                    console.error('Error adding action:', error);
+                    reject(false);
                 });
-        } else {
-            console.error(`Action with id ${action.id} not found`);
-        }
+        });
     }
 
-    const removeAction = (index) => {
-        const action = workflow.value.actions[index]
-        if (!action) {
+    const updateAction = (action) => {
+        return new Promise((resolve, reject) => {
+            const index = workflow.value.actions.findIndex(a => a.id === action.id)
+            if (index !== -1) {
+                axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${action.id}`, action)
+                    .then(response => {
+                        if (response.data.success) {
+                            workflow.value.actions[index] = response.data.data
+                            console.log('Action updated successfully');
+                            resolve(true);
+                        } else {
+                            console.error('Failed to update action:', response.data.message);
+                            reject(false);
+                        }
+                    })
+                    .catch(error => {
+                        reject(false);
+                        console.error('Error updating action:', error);
+                    });
+            } else {
+                console.error(`Action with id ${action.id} not found`);
+            }
+        });
+    }
+
+    const removeAction = (actionId) => {
+        const index = workflow.value.actions.findIndex(a => a.id === actionId)
+        if (index === -1) {
             console.error(`Action with index ${index} not found`);
             return;
         }
-        axios.delete(`${baseURL}/workflows/${workflow.value.id}/actions/${action.id}`)
+        axios.delete(`${baseURL}/workflows/${workflow.value.id}/actions/${actionId}`)
             .then(response => {
                 if (response.data.success) {
                     console.log('Action removed successfully');
                     workflow.value.actions.splice(index, 1)
+
+                    // remove actionId from other actions on_success
+                    workflow.value.actions.forEach(action => {
+                        if (action.on_success === actionId) {
+                            action.on_success = null
+                        }
+                    })
                 } else {
                     console.error('Failed to remove action:', response.data.message);
                 }
@@ -191,9 +274,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
             .catch(error => {
                 console.error('Error removing action:', error);
             });
-
-
     }
+
 
     const resetWorkflow = () => {
         workflow.value = null
@@ -205,6 +287,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
         triggers,
         workflows,
         isWorkflowModalOpen,
+        isActionsModalOpen,
+        selectedAction,
+        previousActionId,
+        openActionModal,
+        closeActionModal,
         openWorkflowModal,
         closeWorkflowModal,
         createWorkflow,
@@ -213,9 +300,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
         editWorkflow,
         fetchWorkflows,
         fetchWorkflowTriggers,
-        addAction,
-        updateAction,
         removeAction,
-        resetWorkflow
+        resetWorkflow,
+        saveAction,
     }
 })

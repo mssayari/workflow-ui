@@ -5,16 +5,17 @@ import {useRoute} from "vue-router";
 import {IconPlus, IconTransform} from "@tabler/icons-vue";
 import Modal from "@/components/v2/Modal.vue";
 import WorkflowForm from "@/components/v2/WorkflowForm.vue";
+import ActionForm from "@/components/v2/ActionForm.vue";
 
 const route = useRoute()
 const workflowStore = useWorkflowStore();
 
 onMounted(() => {
-
+  workflowStore.fetchWorkflows();
 });
 
 onBeforeMount(() => {
-  workflowStore.fetchWorkflows();
+
 });
 
 </script>
@@ -46,6 +47,23 @@ onBeforeMount(() => {
     </template>
     <template #body>
       <workflow-form @close="workflowStore.closeWorkflowModal()"/>
+    </template>
+  </Modal>
+
+  <!-- Action Modal -->
+  <Modal v-if="workflowStore.isActionsModalOpen" @close="workflowStore.closeActionModal()">
+    <template #header>
+      <h3 class="text-lg font-medium">
+        {{ workflowStore.selectedAction ? 'Edit Action' : 'Add New Action' }}
+      </h3>
+    </template>
+
+    <template #body>
+      <ActionForm
+          :action="workflowStore.selectedAction"
+          @save="workflowStore.saveAction"
+          @cancel="workflowStore.closeActionModal()"
+      />
     </template>
   </Modal>
 

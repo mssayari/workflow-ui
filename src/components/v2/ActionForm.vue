@@ -83,7 +83,7 @@ watch([selectedActionIndex, selectedProviderIndex], ([newActionIndex, newProvide
 
 
 onMounted(() => {
-
+  console.log('mounted called!', )
   if (props.action !== null){
     form.value = {...props.action}
     selectedActionIndex.value = actionStore.actions.findIndex(action => action.id === form.value.type_id)

@@ -79,6 +79,8 @@ onMounted(() => {
                 class="w-full px-3 py-2 border border-gray-300 rounded-md">
           <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
         </select>
+
+        <span class="text-sm text-gray-500 ps-1">{{ field.description }}</span>
       </div>
     </template>
   </div>
