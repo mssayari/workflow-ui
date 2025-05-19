@@ -21,24 +21,26 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <div class="flex items-center justify-between bg-gray-800 p-4 shadow-md">
-    <h1 class="text-white text-2xl">Workflow Management</h1>
+  <div class="h-screen flex flex-col">
+    <div class="flex items-center justify-between bg-gray-800 p-4 shadow-md">
+      <h1 class="text-white text-2xl">Workflow Management</h1>
 
-    <router-link v-if="route.name !== 'index'" class="bg-blue-500 hover:bg-blue-600 duration-300 cursor-pointer
+      <router-link v-if="route.name !== 'index'" class="bg-blue-500 hover:bg-blue-600 duration-300 cursor-pointer
     text-white px-4 py-2 rounded flex items-center gap-1"
-                 :to="{name:'index'}">
-      <icon-transform class=" w-4 h-4"/>
-      Workflows
-    </router-link>
-    <button v-else @click="workflowStore.openWorkflowModal()" class="bg-blue-500 hover:bg-blue-600 duration-300 cursor-pointer
+                   :to="{name:'index'}">
+        <icon-transform class=" w-4 h-4"/>
+        Workflows
+      </router-link>
+      <button v-else @click="workflowStore.openWorkflowModal()" class="bg-blue-500 hover:bg-blue-600 duration-300 cursor-pointer
     text-white px-4 py-2 rounded flex items-center gap-1">
-      <icon-plus class="w-4 h-4"/>
-      <span>New Workflow</span>
-    </button>
+        <icon-plus class="w-4 h-4"/>
+        <span>New Workflow</span>
+      </button>
+    </div>
+    <main class="w-full flex-1">
+      <slot/>
+    </main>
   </div>
-  <main class="w-full">
-    <slot/>
-  </main>
 
   <!-- Workflow Modal -->
   <Modal v-if="workflowStore.isWorkflowModalOpen" @close="workflowStore.closeWorkflowModal()">
@@ -61,7 +63,6 @@ onBeforeMount(() => {
     <template #body>
       <ActionForm
           :action="workflowStore.selectedAction"
-          @save="workflowStore.saveAction"
           @cancel="workflowStore.closeActionModal()"
       />
     </template>
