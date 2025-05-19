@@ -2,6 +2,7 @@
 import {computed, onMounted, ref, watch} from 'vue'
 import DynamicConfig from './DynamicConfig.vue'
 import {useActionStore} from "@/stores/action.js";
+import {useWorkflowStore} from "@/stores/workflow.js";
 
 
 const props = defineProps({
@@ -10,8 +11,9 @@ const props = defineProps({
 
 
 const isReady = ref(false)
+const workflowStore = useWorkflowStore()
 const actionStore = useActionStore()
-const emit = defineEmits(['save', 'cancel'])
+const emit = defineEmits(['cancel'])
 
 const selectedActionIndex = ref(0)
 const selectedProviderIndex = ref(0)
@@ -20,8 +22,10 @@ const form  = ref({
   name: '',
   type_id: 0,
   provider_id: 0,
-  config: {}
+  config: {},
 })
+
+const errors = ref({})
 
 const updateConfig = (newConfig) => {
   if (JSON.stringify(form.value.config) !== JSON.stringify(newConfig)) {
@@ -44,7 +48,12 @@ const handleSubmit = () => {
   form.value.type_id = actionStore.actions[selectedActionIndex.value].id
   form.value.provider_id = actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].id
 
-  emit('save', form.value)
+  workflowStore.saveAction(form.value).catch(response => {
+    console.log(response)
+    errors.value = response.errors
+  })
+
+  // emit('save', form.value)
 }
 
 
@@ -52,39 +61,46 @@ const schema = computed(() => {
   return actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].form_schema.properties
 })
 
-const initConfig = () => {
-  console.log('init called!')
+const initConfig = (bindValues = false) => {
   form.value.config = {}
 
   for (const [key, value] of Object.entries(schema.value)) {
     switch (value.type) {
       case 'string':
-        form.value.config[key] = props.action?.config[key] || ''
+        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
         break
       case 'number':
-        form.value.config[key] = props.action?.config[key] || 0
+        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
         break
       case 'boolean':
-        form.value.config[key] = props.action?.config[key] || false
+        form.value.config[key] = bindValues ? (props.action?.config[key] || false) : false
         break
       case 'json':
-        form.value.config[key] = props.action?.config[key] || {}
+        if (value.format === 'filter') {
+          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
+        }else if(value.format === 'transform') {
+          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
+        }else if(value.format === 'derived-columns'){
+          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
+        }else{
+          form.value.config[key] = bindValues ? (props.action?.config[key] || {}) : {}
+        }
         break
       default:
-        form.value.config[key] = props.action?.config[key] || null
+        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
     }
   }
 }
 
 // watch selectedActionIndex and selectedProviderIndex if they change, update config
 watch([selectedActionIndex, selectedProviderIndex], ([newActionIndex, newProviderIndex]) => {
-  initConfig()
+  initConfig(props.action !== null && !workflowStore.isInnerAction)
+
 })
 
 
 onMounted(() => {
-  console.log('mounted called!', )
-  if (props.action !== null){
+  if (props.action !== null && !workflowStore.isInnerAction){
     form.value = {...props.action}
     selectedActionIndex.value = actionStore.actions.findIndex(action => action.id === form.value.type_id)
     selectedProviderIndex.value = actionStore.actions[selectedActionIndex.value].providers.findIndex(provider => provider.id === form.value.provider_id)
@@ -131,7 +147,7 @@ onMounted(() => {
     </div>
 
     <!-- Dynamic config fields based on action type -->
-    <dynamic-config :config="form.config" @update:config="updateConfig" :schema="schema"/>
+    <dynamic-config :config="form.config" @update:config="updateConfig" :schema="schema" :errors="errors"/>
 
     <div class="flex justify-end gap-3 mt-6">
       <button type="button" @click="$emit('cancel')"

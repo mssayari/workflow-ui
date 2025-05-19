@@ -1,6 +1,9 @@
 <script setup>
-import {onMounted, ref, watch} from 'vue'
-import JsonItem  from "./JsonItem.vue";
+import {onMounted, onUpdated, ref, watch} from 'vue'
+import JsonKeyValueEditor from "@/components/v2/JsonKeyValueEditor.vue";
+import JsonFilterEditor from "@/components/v2/JsonFilterEditor.vue";
+import JsonTransformEditor from "@/components/v2/JsonTransformEditor.vue";
+import JsonDerivedColumnsEditor from "@/components/v2/JsonDerivedColumnsEditor.vue";
 
 
 const props = defineProps({
@@ -11,6 +14,10 @@ const props = defineProps({
   config: {
     type: Object,
     required: true
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -42,8 +49,12 @@ const initializeJsonFields = () => {
   }
 }
 
+onUpdated(()=>{
+  // console.log(props.schema)
+})
 
 onMounted(() => {
+  // console.log(props.schema)
 })
 
 </script>
@@ -54,8 +65,16 @@ onMounted(() => {
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.title }}</label>
 
+        <!-- Selectable String -->
+        <select v-if="field.type === 'string' && field.enum"
+                v-model="localConfig[key]"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md">
+          <option v-for="opt in field.enum" :key="opt" :value="opt">{{ opt }}</option>
+        </select>
+
+
         <!-- Input field -->
-        <input v-if="field.type === 'string' || field.type === 'number'"
+        <input v-else-if="field.type === 'string' || field.type === 'number'"
                v-model="localConfig[key]"
                 :type="field.type === 'number' ? 'number' : 'text'"
                :placeholder="field.placeholder"
@@ -63,15 +82,29 @@ onMounted(() => {
         >
 
         <!-- Textarea -->
-        <textarea v-else-if="field.type === 'textarea'"
+        <textarea v-else-if="field.type === 'textarea' || field.type === 'text'"
                   v-model="localConfig[key]"
                   :placeholder="field.placeholder"
                   rows="3"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md"
         ></textarea>
 
-        <json-item v-else-if="field.type === 'json'"
-                   v-model:value="localConfig[key]"></json-item>
+        <!-- JSON Key-Value -->
+        <json-key-value-editor v-else-if="field.type === 'json' && field.format === 'key-value'"
+                               v-model:value="localConfig[key]" />
+
+        <!-- JSON Filter -->
+        <json-filter-editor v-else-if="field.type === 'json' && field.format === 'filter'"
+                            v-model:value="localConfig[key]" :schema="field" />
+
+        <!-- JSON Transform -->
+        <json-transform-editor v-else-if="field.type === 'json' && field.format === 'transform'"
+                               v-model:value="localConfig[key]" />
+
+        <!-- JSON Derived Columns -->
+        <json-derived-columns-editor v-else-if="field.type === 'json' && field.format === 'derived-columns'"
+                                     v-model:value="localConfig[key]" />
+
 
         <!-- Select -->
         <select v-else-if="field.type === 'select'"
@@ -80,7 +113,14 @@ onMounted(() => {
           <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
         </select>
 
+        <!-- Boolean -->
+        <div v-else-if="field.type === 'boolean'" class="flex items-center">
+          <input type="checkbox" v-model="localConfig[key]" class="mr-2">
+          <span>{{ field.title }}</span>
+        </div>
+
         <span class="text-sm text-gray-500 ps-1">{{ field.description }}</span>
+        <span v-if="errors['config.'+ key]" class="text-red-500 text-sm">{{ errors['config.'+ key][0] }}</span>
       </div>
     </template>
   </div>
