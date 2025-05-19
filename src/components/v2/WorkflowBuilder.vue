@@ -7,8 +7,9 @@ import {useActionStore} from "@/stores/action.js";
 import {useWorkflowStore} from "@/stores/workflow.js";
 import Layout from "@/components/v2/Layout.vue";
 import router from "@/router/router.js";
-import {VueFlow, useVueFlow,MarkerType} from '@vue-flow/core'
+import {VueFlow, useVueFlow, MarkerType} from '@vue-flow/core'
 import {useLayout} from '@/utils/useLayout.js'
+import GroupActionNode from "@/components/v2/flow/GroupActionNode.vue";
 import ActionNode from "@/components/v2/flow/ActionNode.vue";
 import TriggerNode from "@/components/v2/flow/TriggerNode.vue";
 
@@ -66,15 +67,32 @@ const {fitView} = useVueFlow()
 // create nodes from workflowStore.workflow.actions
 
 const generateNodesAndEdges = () => {
-  nodes.value = workflowStore.workflow.actions.map((action, index) => ({
-    id: action.id,
-    type: 'action',
-    position: {x: 0, y: 0},
-    data: {
-      label: action.name,
-      action: action
-    },
-  }))
+  nodes.value = workflowStore.workflow.actions.flatMap((action) => {
+    const parentNode = {
+      id: action.id,
+      type: action.actions.length ? 'group-action' : 'action',
+      position: {x: 0, y: 0},
+      data: {
+        label: action.name,
+        action: action
+      },
+    }
+
+    // Add child actions as nodes with parentNode attribute
+    // const childNodes = action.actions.map((childAction) => ({
+    //   id: childAction.id,
+    //   type: 'action',
+    //   position: {x: 0, y: 0},
+    //   data: {
+    //     label: childAction.name,
+    //     action: childAction,
+    //   },
+    //   parentNode: action.id,
+    // }));
+
+    return [parentNode];
+
+  })
 
   // add a trigger node at the beginning
   nodes.value.unshift({
@@ -88,25 +106,41 @@ const generateNodesAndEdges = () => {
   })
 
   // action's on_success property is the id of the next action. so we can use it to create edges
-  edges.value = workflowStore.workflow.actions.map((action, index) => {
+  edges.value = workflowStore.workflow.actions.flatMap((action) => {
+    const edges = [];
     if (action.on_success) {
-      return {
+      edges.push({
         id: `${action.id}->${action.on_success}`,
         source: action.id,
         target: action.on_success,
         data: {
           hello: 'world',
         },
-        style: { stroke: '#4a5565' },
+        style: {stroke: '#4a5565'},
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: '#4a5565',
         },
-      }
-    } else {
-      return undefined
+      })
     }
-  }).filter(edge => edge !== undefined)
+
+    // Add edges for child actions
+    // action.actions.forEach((childAction) => {
+    //   edges.push({
+    //     id: `${action.id}->${childAction.id}`,
+    //     source: action.id,
+    //     target: childAction.id,
+    //     style: {stroke: '#4a5565'},
+    //     markerEnd: {
+    //       type: MarkerType.ArrowClosed,
+    //       color: '#4a5565',
+    //     },
+    //   });
+    // });
+
+
+    return edges;
+  })
 
   // add edges from trigger to the action that it's id is in any on_success
   if (workflowStore.workflow.actions.length) {
@@ -121,7 +155,7 @@ const generateNodesAndEdges = () => {
         data: {
           hello: 'world',
         },
-        style: { stroke: '#4a5565' },
+        style: {stroke: '#4a5565'},
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: '#4a5565',
@@ -207,9 +241,9 @@ onUnmounted(() => {
 </script>
 <template>
   <layout>
-    <div class="flex min-h-screen bg-gray-900" v-if="workflowStore.workflow">
+    <div class="flex h-full bg-gray-900" v-if="workflowStore.workflow">
       <!-- Left side: JSON Preview -->
-      <div class="w-1/3 p-4">
+      <div class="w-1/3 p-4 h-full">
         <div class="bg-gray-800 rounded-lg h-full">
           <div class="flex justify-between items-center p-4 border-b border-gray-700">
             <h2 class="text-white text-lg font-semibold">Workflow JSON</h2>
@@ -218,11 +252,11 @@ onUnmounted(() => {
             <!--              class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">-->
             <!--            Copy JSON-->
             <!--          </button>-->
-            <button @click="workflowStore.openWorkflowModal()"
-                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Config
-            </button>
+            <a :href="'http://adomaticio.test/workflow/'+ workflowStore.workflow.id" target="_blank"
+                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Run
+            </a>
           </div>
-          <pre class="p-4 text-green-400 overflow-auto h-[calc(100%-4rem)]">{{ workflowStore.prettyWorkflow }}</pre>
+          <pre class="p-4 text-sm text-green-400 overflow-auto h-[calc(100%-4rem)]">{{ workflowStore.prettyWorkflow }}</pre>
         </div>
       </div>
 
@@ -231,6 +265,10 @@ onUnmounted(() => {
         <div class="h-full bg-gray-50 rounded-lg py-2">
 
           <VueFlow v-if="isReady" :nodes="nodes" :edges="edges" @nodes-initialized="layoutGraph('TB')">
+
+            <template #node-group-action="props">
+              <group-action-node :id="props.id" :data="props.data"/>
+            </template>
 
             <template #node-action="props">
               <action-node :id="props.id" :data="props.data"/>
