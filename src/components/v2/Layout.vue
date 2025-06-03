@@ -22,7 +22,7 @@ onBeforeMount(() => {
 
 <template>
   <div class="h-screen flex flex-col">
-    <div class="flex items-center justify-between bg-gray-800 p-4 shadow-md">
+    <div class="flex items-center justify-between bg-gray-800 h-16 px-3 shadow-md">
       <h1 class="text-white text-2xl">Workflow Management</h1>
 
       <router-link v-if="route.name !== 'index'" class="bg-blue-500 hover:bg-blue-600 duration-300 cursor-pointer
@@ -37,7 +37,7 @@ onBeforeMount(() => {
         <span>New Workflow</span>
       </button>
     </div>
-    <main class="w-full flex-1">
+    <main class="w-full flex-1 overflow-y-auto">
       <slot/>
     </main>
   </div>
