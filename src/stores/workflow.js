@@ -109,6 +109,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         if (!workflow.value) {
             workflow.value = {
                 name: 'new workflow',
+                store_ref: '',
                 description: '',
                 trigger: {
                     type: '4',
@@ -158,6 +159,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         return new Promise((resolve, reject) => {
             axios.post('http://adomaticio.test/api/v1/workflows', {
                 name: workflow.value.name,
+                store_ref: workflow.value.store_ref,
                 trigger: workflow.value.trigger,
             }).then(response => {
                 if (response.data.success) {
@@ -182,6 +184,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         return new Promise((resolve, reject) => {
             axios.put(`${baseURL}/workflows/${workflow.value.id}`, {
                 name: workflow.value.name,
+                store_ref: workflow.value.store_ref,
                 trigger: workflow.value.trigger,
             })
                 .then(response => {

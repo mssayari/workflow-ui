@@ -8,6 +8,7 @@ import router from "@/router/router.js";
 const workflowStore = useWorkflowStore()
 const formData = ref({
   name: '',
+  store_ref: '',
   trigger: {
     type: '4',
     config: {}
@@ -37,6 +38,7 @@ const handleSubmit = () => {
 
   // Update the workflow store with the new trigger data
   workflowStore.workflow.name = formData.value.name
+  workflowStore.workflow.store_ref = formData.value.store_ref || ''
   workflowStore.workflow.trigger = {...formData.value.trigger}
 
   if (workflowStore.workflow.id) {
@@ -59,6 +61,7 @@ const handleSubmit = () => {
 onMounted(() => {
   // copy the trigger name and trigger object to formData
   formData.value.name = JSON.parse(JSON.stringify(workflowStore.workflow.name || ''))
+  formData.value.store_ref = JSON.parse(JSON.stringify(workflowStore.workflow.store_ref || ''))
   formData.value.trigger = JSON.parse(JSON.stringify(workflowStore.workflow.trigger))
 })
 
@@ -69,9 +72,15 @@ onMounted(() => {
   <form @submit.prevent="handleSubmit" class="space-y-4">
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-2">Workflow Name</label>
-      <input v-model="formData.name" type="text" @change="console.log(workflowStore.workflow.name)"
+      <input v-model="formData.name" type="text"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"
              placeholder="Enter workflow name">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Store Reference</label>
+      <input v-model="formData.store_ref" type="text"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"
+             placeholder="Enter store reference">
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
