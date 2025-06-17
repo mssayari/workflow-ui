@@ -4,6 +4,7 @@ import JsonKeyValueEditor from "@/components/v2/JsonKeyValueEditor.vue";
 import JsonFilterEditor from "@/components/v2/JsonFilterEditor.vue";
 import JsonTransformEditor from "@/components/v2/JsonTransformEditor.vue";
 import JsonDerivedColumnsEditor from "@/components/v2/JsonDerivedColumnsEditor.vue";
+import ConditionGroupBuilder from "@/components/v2/ConditionGroupBuilder.vue";
 
 
 const props = defineProps({
@@ -92,6 +93,11 @@ onMounted(() => {
         <!-- JSON Key-Value -->
         <json-key-value-editor v-else-if="field.type === 'json' && field.format === 'key-value'"
                                v-model:value="localConfig[key]" />
+
+
+        <!-- JSON Condition Builder -->
+        <condition-group-builder v-else-if="field.type === 'json' && field.format === 'condition-builder'"
+                                v-model:value="localConfig[key]" :schema="field" />
 
         <!-- JSON Filter -->
         <json-filter-editor v-else-if="field.type === 'json' && field.format === 'filter'"

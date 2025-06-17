@@ -76,6 +76,9 @@ const initConfig = (bindValues = false) => {
         form.value.config[key] = bindValues ? (props.action?.config[key] || false) : false
         break
       case 'json':
+        if (value.format === 'condition-builder') {
+          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
+        }else
         if (value.format === 'filter') {
           form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
         }else if(value.format === 'transform') {
