@@ -39,7 +39,7 @@ const setOperators = () => {
 };
 
 onMounted(() => {
-  console.log(props.schema.items.properties.conditions.items.properties.operator.enum)
+  // console.log(props.schema.items.properties.conditions.items.properties.operator.enum)
   setOperators();
 });
 

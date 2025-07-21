@@ -53,7 +53,7 @@ const operatorRequiresValue = (operator) => {
 
 onMounted(() => {
   setOperators()
-  console.log(props.schema)
+  // console.log(props.schema)
 })
 </script>
 

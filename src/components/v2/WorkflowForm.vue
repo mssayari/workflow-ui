@@ -9,37 +9,38 @@ const workflowStore = useWorkflowStore()
 const formData = ref({
   name: '',
   store_ref: '',
-  trigger: {
-    type: '4',
-    config: {}
-  }
+  folder_id: null,
+  description: '',
 })
 
 const cronError = ref('')
-
+const errors = ref({})
 
 const handleSubmit = () => {
   // Remove extra properties based on the trigger type
-  if (formData.value.trigger.type === '1') {
-    formData.value.trigger.config = {
-      cron: formData.value.trigger.config.cron || '* * * * *',
-    }
-  } else if (formData.value.trigger.type === '2') {
-    formData.value.trigger.config = {
-      url: formData.value.trigger.config.url
-    }
-  } else if (formData.value.trigger.type === '3') {
-    formData.value.trigger.config = {
-      event: formData.value.trigger.config.event
-    }
-  } else {
-    formData.value.trigger.config = {}
-  }
+  // if (formData.value.trigger.type === '1') {
+  //   formData.value.trigger.config = {
+  //     cron: formData.value.trigger.config.cron || '* * * * *',
+  //   }
+  // } else if (formData.value.trigger.type === '2') {
+  //   formData.value.trigger.config = {
+  //     url: formData.value.trigger.config.url
+  //   }
+  // } else if (formData.value.trigger.type === '3') {
+  //   formData.value.trigger.config = {
+  //     event: formData.value.trigger.config.event
+  //   }
+  // } else {
+  //   formData.value.trigger.config = {}
+  // }
 
   // Update the workflow store with the new trigger data
   workflowStore.workflow.name = formData.value.name
   workflowStore.workflow.store_ref = formData.value.store_ref || ''
-  workflowStore.workflow.trigger = {...formData.value.trigger}
+  workflowStore.workflow.folder_id = formData.value.folder_id || null
+  workflowStore.workflow.description = formData.value.description || ''
+
+  // workflowStore.workflow.trigger = {...formData.value.trigger}
 
   if (workflowStore.workflow.id) {
     workflowStore.updateWorkflow().then(() => {
@@ -53,6 +54,10 @@ const handleSubmit = () => {
         params: {id: workflowStore.workflow.id}
       })
       workflowStore.closeWorkflowModal()
+    }).catch((error) => {
+      console.error('Error creating workflow:', error)
+      errors.value = error.errors
+
     })
   }
 }
@@ -62,7 +67,8 @@ onMounted(() => {
   // copy the trigger name and trigger object to formData
   formData.value.name = JSON.parse(JSON.stringify(workflowStore.workflow.name || ''))
   formData.value.store_ref = JSON.parse(JSON.stringify(workflowStore.workflow.store_ref || ''))
-  formData.value.trigger = JSON.parse(JSON.stringify(workflowStore.workflow.trigger))
+  formData.value.folder_id = JSON.parse(JSON.stringify(workflowStore.workflow.folder_id || null))
+  formData.value.description = JSON.parse(JSON.stringify(workflowStore.workflow.description || ''))
 })
 
 
@@ -75,29 +81,32 @@ onMounted(() => {
       <input v-model="formData.name" type="text"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"
              placeholder="Enter workflow name">
+      <p v-if="errors.name" class="text-red-500 text-sm mt-1">{{ errors.name[0] }}</p>
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-2">Store Reference</label>
       <input v-model="formData.store_ref" type="text"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"
              placeholder="Enter store reference">
+      <p v-if="errors.store_ref" class="text-red-500 text-sm mt-1">{{ errors.store_ref[0] }}</p>
     </div>
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
-      <select v-model="formData.trigger.type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-        <option v-for="(trigger,index) in workflowStore.triggers" :value="index">{{ trigger }}</option>
-      </select>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Store Reference</label>
+      <textarea v-model="formData.description" type="text"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"
+             placeholder="Enter store reference" />
+      <p v-if="errors.description" class="text-red-500 text-sm mt-1">{{ errors.description[0] }}</p>
     </div>
 
     <!-- Schedule Config -->
-    <div v-if="formData.trigger.type === '1' || formData.trigger.type === 1">
+    <div v-if="false">
       <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Rule</label>
       <cron v-model="formData.trigger.config.cron" @error="cronError=$event"></cron>
       <p v-if="cronError" class="text-red-500 text-sm mt-1">{{ cronError }}</p>
     </div>
 
     <!-- Webhook Config -->
-    <div v-if="formData.trigger.type === '2' || formData.trigger.type === 2">
+    <div v-if="false">
       <label class="block text-sm font-medium text-gray-700 mb-2">Webhook URL</label>
       <input v-model="formData.trigger.config.url" type="text"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -105,7 +114,7 @@ onMounted(() => {
     </div>
 
     <!-- Event Config -->
-    <div v-if="formData.trigger.type === '3' || formData.trigger.type === 3">
+    <div v-if="false">
       <label class="block text-sm font-medium text-gray-700 mb-2">Event Name</label>
       <input v-model="formData.trigger.config.event" type="text"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"

@@ -15,13 +15,12 @@ const workflowStore = useWorkflowStore()
 const actionStore = useActionStore()
 const emit = defineEmits(['cancel'])
 
-const selectedActionIndex = ref(0)
-const selectedProviderIndex = ref(0)
-const form  = ref({
+const selectedAppIndex = ref(null)
+const selectedActionIndex = ref(null)
+const form = ref({
   id: null,
+  connection_id: null,
   name: '',
-  type_id: 0,
-  provider_id: 0,
   config: {},
 })
 
@@ -45,11 +44,20 @@ const handleSubmit = () => {
   //   }
   // }
 
-  form.value.type_id = actionStore.actions[selectedActionIndex.value].id
-  form.value.provider_id = actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].id
+  // if no action is selected, return
+  if (selectedAppIndex.value === null || selectedActionIndex.value === null) {
+    console.error('No action selected')
+    return
+  }
+
+  if(isTriggerAction.value){
+    form.value.trigger_id = workflowStore.apps[selectedAppIndex.value].triggers[selectedActionIndex.value].id
+  }else{
+    form.value.action_id = workflowStore.apps[selectedAppIndex.value].actions[selectedActionIndex.value].id
+  }
 
   workflowStore.saveAction(form.value).catch(response => {
-    console.log(response)
+    // console.log(response)
     errors.value = response.errors
   })
 
@@ -57,57 +65,85 @@ const handleSubmit = () => {
 }
 
 
+const isTriggerAction = ref(false)
+
 const schema = computed(() => {
-  return actionStore.actions[selectedActionIndex.value].providers[selectedProviderIndex.value].form_schema.properties
+  if (selectedAppIndex.value === null || selectedActionIndex.value === null) {
+    return []
+  }
+  return workflowStore.apps[selectedAppIndex.value].actions[selectedActionIndex.value].form_schema
 })
 
 const initConfig = (bindValues = false) => {
   form.value.config = {}
-
-  for (const [key, value] of Object.entries(schema.value)) {
-    switch (value.type) {
-      case 'string':
-        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
+  for (const item of schema.value) {
+    switch (item.type) {
+      case 'text':
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
         break
       case 'number':
-        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
         break
       case 'boolean':
-        form.value.config[key] = bindValues ? (props.action?.config[key] || false) : false
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || false) : false
         break
       case 'json':
-        if (value.format === 'condition-builder') {
-          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
-        }else
-        if (value.format === 'filter') {
-          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
-        }else if(value.format === 'transform') {
-          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
-        }else if(value.format === 'derived-columns'){
-          form.value.config[key] = bindValues ? (props.action?.config[key] || []) : []
-        }else{
-          form.value.config[key] = bindValues ? (props.action?.config[key] || {}) : {}
+        if (item.format === 'condition-builder') {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        } else if (item.format === 'filter') {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        } else if (item.format === 'transform') {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        } else if (item.format === 'derived-columns') {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        } else {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || {}) : {}
         }
         break
       default:
-        form.value.config[key] = bindValues ? (props.action?.config[key] || value.default) : value.default
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
     }
   }
 }
 
-// watch selectedActionIndex and selectedProviderIndex if they change, update config
-watch([selectedActionIndex, selectedProviderIndex], ([newActionIndex, newProviderIndex]) => {
+// on selectedAppIndex change fetch actions for that app
+watch(selectedAppIndex, (newIndex) => {
+  if (newIndex !== null) {
+    selectedActionIndex.value = null
+    workflowStore.fetchActions(newIndex)
+  } else {
+    console.log('No app selected')
+  }
+})
+
+
+watch(selectedActionIndex, (newIndex) => {
+  if (newIndex !== null && selectedAppIndex.value !== null) {
+    initConfig(true)
+  } else {
+    console.log('No action selected')
+  }
+
   initConfig(props.action !== null && !workflowStore.isInnerAction)
 
 })
 
 
 onMounted(() => {
-  if (props.action !== null && !workflowStore.isInnerAction){
+
+  isTriggerAction.value = workflowStore.isTriggerAction
+  let app_id = isTriggerAction.value ? props.action?.trigger?.app_id : props.action?.action?.app_id
+  let action_id = isTriggerAction.value ? props.action?.trigger?.id : props.action?.action?.id
+
+  if (props.action !== null && !workflowStore.isInnerAction) {
     form.value = {...props.action}
-    selectedActionIndex.value = actionStore.actions.findIndex(action => action.id === form.value.type_id)
-    selectedProviderIndex.value = actionStore.actions[selectedActionIndex.value].providers.findIndex(provider => provider.id === form.value.provider_id)
-  }else{
+    selectedAppIndex.value = workflowStore.apps.findIndex(app => app.id === app_id)
+
+    //TODO: should replace with promise based fetch
+    setTimeout(() => {
+      selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].actions.findIndex(action => action.id === action_id)
+    }, 500)
+  } else {
     initConfig()
   }
 
@@ -118,34 +154,50 @@ onMounted(() => {
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-4" v-if="isReady">
     <div class="w-full space-y-3">
-      <div>
+      <div v-if="!isTriggerAction">
         <label class="block text-sm font-medium text-gray-700 mb-1">Action Name</label>
         <input type="text" v-model="form.name" class="w-full p-2 border border-gray-300 rounded-md"
                placeholder="Enter action name"/>
         <span class="text-sm text-gray-500 ps-1">This name will be used to identify the action in the workflow.</span>
       </div>
       <div class="">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
-        <select v-model="selectedActionIndex" class="w-full p-2 border border-gray-300 rounded-md">
-          <option v-for="(action,index) in actionStore.actions" :key="index" :value="index">
+        <label class="block text-sm font-medium text-gray-700 mb-1">App</label>
+        <select v-model="selectedAppIndex" class="w-full p-2 border border-gray-300 rounded-md">
+          <option v-for="(action,index) in workflowStore.apps" :key="index" :value="index">
             {{ action.name }}
           </option>
         </select>
-        <span class="text-sm text-gray-500 ps-1">{{ actionStore.actions[selectedActionIndex].description }}</span>
+        <span v-if="selectedAppIndex !== null"
+              class="text-sm text-gray-500 ps-1">{{ workflowStore.apps[selectedAppIndex].description }}</span>
       </div>
-      <div class="">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-        <select v-model="selectedProviderIndex" :disabled="!actionStore.actions[selectedActionIndex]"
+      <div v-if="selectedAppIndex !== null" class="">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+        <select v-model="selectedActionIndex" :disabled="!workflowStore.apps[selectedAppIndex]"
                 class="w-full p-2 border border-gray-300 rounded-md">
-          <option v-for="(provider,index) in actionStore.actions[selectedActionIndex]?.providers || []" :key="index"
+          <option v-for="(action,index) in workflowStore.apps[selectedAppIndex]?.actions || []" :key="index"
                   :value="index">
-            {{ provider.name }}
+            {{ action.name }}
           </option>
         </select>
-        <span
-            class="text-sm text-gray-500 ps-1">{{
-            actionStore.actions[selectedActionIndex].providers[selectedProviderIndex].description
+        <span v-if="selectedActionIndex !== null"
+              class="text-sm text-gray-500 ps-1">{{
+            workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description
           }}</span>
+      </div>
+      <div v-if="selectedAppIndex !== null && workflowStore.apps[selectedAppIndex].connection_driver !== null" class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Connection</label>
+        <select v-model="form.connection_id"
+                class="w-full p-2 border border-gray-300 rounded-md">
+          <option v-for="(connection,index) in workflowStore.getConnectionsByDriver(workflowStore.apps[selectedAppIndex].connection_driver) || []" :key="index"
+                  :value="connection.id">
+            {{ connection.name }}
+          </option>
+        </select>
+        <span v-if="selectedActionIndex !== null"
+              class="text-sm text-gray-500 ps-1">{{
+            workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description
+          }}</span>
+        <span v-if="errors['connection_id']" class="text-red-500 text-sm ps-1">{{ errors['connection_id'][0] }}</span>
       </div>
     </div>
 

@@ -1,9 +1,5 @@
 <script setup>
 import {ref, onMounted, onBeforeMount, onUnmounted, nextTick, watch} from 'vue'
-import {IconPlus, IconX} from '@tabler/icons-vue'
-import Modal from './Modal.vue'
-import ActionForm from '@/components/v2/ActionForm.vue'
-import {useActionStore} from "@/stores/action.js";
 import {useWorkflowStore} from "@/stores/workflow.js";
 import Layout from "@/components/v2/Layout.vue";
 import router from "@/router/router.js";
@@ -23,93 +19,53 @@ const props = defineProps({
 
 const isReady = ref(false)
 const workflowStore = useWorkflowStore()
-const actionStore = useActionStore()
-
-const showActionModal = ref(false)
-const editingAction = ref(null)
-const selectedAction = ref(null)
-const afterActionId = ref(null)
-
-
-const openActionModal = (actionId) => {
-  afterActionId.value = actionId
-  showActionModal.value = true
-}
-
-const closeActionModal = () => {
-  showActionModal.value = false
-  editingAction.value = null
-  afterActionId.value = null
-}
-
-const editAction = (action) => {
-  editingAction.value = {...action}
-  showActionModal.value = true
-}
-
-
-const updateActionChaining = () => {
-  workflowStore.workflow.actions.forEach((action, i) => {
-    if (i < workflowStore.workflow.actions.length - 1) {
-      action.onSuccess = workflowStore.workflow.actions[i + 1].id
-    } else {
-      action.onSuccess = null
-    }
-  })
-}
 
 
 // VueFlow
 const {layout} = useLayout()
 const {fitView} = useVueFlow()
 
+const nodes = ref([])
+const edges = ref([])
 
 // create nodes from workflowStore.workflow.actions
 
 const generateNodesAndEdges = () => {
-  nodes.value = workflowStore.workflow.actions.flatMap((action) => {
-    const parentNode = {
+  nodes.value = []
+  edges.value = []
+  // add a trigger nodes at the beginning
+  workflowStore.workflow.triggers.map((trigger) => {
+    nodes.value.push({
+      id: trigger.id,
+      type: 'trigger',
+      position: {x: 0, y: 0},
+      data: {
+        label: trigger.trigger.app.name + ' - ' + trigger.trigger.name,
+        trigger: trigger
+      },
+    })
+  })
+
+
+  workflowStore.workflow.actions.map((action) => {
+    nodes.value.push({
       id: action.id,
-      type: action.actions.length ? 'group-action' : 'action',
+      type: action.actions_count > 0 ? 'group-action' : 'action',
+      expandParent: action.actions_count === 0,
+      parentNode: action.parent_id,
       position: {x: 0, y: 0},
       data: {
         label: action.name,
         action: action
       },
-    }
-
-    // Add child actions as nodes with parentNode attribute
-    // const childNodes = action.actions.map((childAction) => ({
-    //   id: childAction.id,
-    //   type: 'action',
-    //   position: {x: 0, y: 0},
-    //   data: {
-    //     label: childAction.name,
-    //     action: childAction,
-    //   },
-    //   parentNode: action.id,
-    // }));
-
-    return [parentNode];
-
+    })
   })
 
-  // add a trigger node at the beginning
-  nodes.value.unshift({
-    id: 'trigger',
-    type: 'trigger',
-    position: {x: 0, y: 0},
-    data: {
-      label: workflowStore.triggers[workflowStore.workflow.trigger.type] || '',
-      node: workflowStore.workflow.trigger
-    },
-  })
 
   // action's on_success property is the id of the next action. so we can use it to create edges
-  edges.value = workflowStore.workflow.actions.flatMap((action) => {
-    const edges = [];
+  workflowStore.workflow.actions.map((action) => {
     if (action.on_success) {
-      edges.push({
+      edges.value.push({
         id: `${action.id}->${action.on_success}`,
         source: action.id,
         target: action.on_success,
@@ -123,83 +79,37 @@ const generateNodesAndEdges = () => {
         },
       })
     }
-
-    // Add edges for child actions
-    // action.actions.forEach((childAction) => {
-    //   edges.push({
-    //     id: `${action.id}->${childAction.id}`,
-    //     source: action.id,
-    //     target: childAction.id,
-    //     style: {stroke: '#4a5565'},
-    //     markerEnd: {
-    //       type: MarkerType.ArrowClosed,
-    //       color: '#4a5565',
-    //     },
-    //   });
-    // });
-
-
-    return edges;
   })
 
-  // add edges from trigger to the action that it's id is in any on_success
+  // add edges from trigger to the action that it's id is not in any on_success
   if (workflowStore.workflow.actions.length) {
     const chain_ids = workflowStore.workflow.actions.map(action => action.on_success).filter(id => id !== null)
     const firstAction = workflowStore.workflow.actions.find(action => !chain_ids.includes(action.id))
 
     if (firstAction && firstAction.id) {
-      edges.value.unshift({
-        id: `trigger->${firstAction.id}`,
-        source: 'trigger',
-        target: firstAction.id,
-        data: {
-          hello: 'world',
-        },
-        style: {stroke: '#4a5565'},
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: '#4a5565',
-        },
-      })
+      // find the trigger node
+      const triggerNodes = nodes.value.filter(node => node.type === 'trigger');
+      // console.log(triggerNodes)
+      triggerNodes.map(triggerNode => {
+        edges.value.unshift({
+          id: `${triggerNode.id}->${firstAction.id}`,
+          source: triggerNode.id,
+          target: firstAction.id,
+          data: {
+            hello: 'world',
+          },
+          style: {stroke: '#4a5565'},
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#4a5565',
+          },
+        })
+
+      });
     }
   }
+
 }
-
-
-const nodes = ref([
-  // an input node, specified by using `type: 'input'`
-  {
-    id: '1',
-    position: {x: 0, y: 0},
-    // all nodes can have a data object containing any data you want to pass to the node
-    // a label can property can be used for default nodes
-    data: {label: 'Node 1'},
-  }
-])
-
-// these are our edges
-const edges = ref([
-  // default bezier edge
-  // consists of an edge id, source node id and target node id
-  {
-    id: 'e1->2',
-    source: '1',
-    target: '2',
-
-  },
-  // a custom edge, specified by using a custom type name
-  // we choose `type: 'special'` for this example
-  {
-    id: 'e2->3',
-    source: '2',
-    target: '3',
-
-    // all edges can have a data object containing any data you want to pass to the edge
-    data: {
-      hello: 'world',
-    }
-  },
-])
 
 
 // watch for changes in the workflowStore.workflow and update the nodes and edges
@@ -247,24 +157,21 @@ onUnmounted(() => {
         <div class="bg-gray-800 rounded-lg h-full">
           <div class="flex justify-between items-center p-4 border-b border-gray-700">
             <h2 class="text-white text-lg font-semibold">Workflow JSON</h2>
-            <!--          <button-->
-            <!--              @click="copyJson"-->
-            <!--              class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">-->
-            <!--            Copy JSON-->
-            <!--          </button>-->
-            <a :href="'http://adomaticio.test/workflow/'+ workflowStore.workflow.id" target="_blank"
-                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Run
-            </a>
+            <button @click="workflowStore.openWorkflowModal()"
+                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Edit Workflow
+            </button>
           </div>
-          <pre class="p-4 text-sm text-green-400 overflow-auto h-[calc(100%-4rem)]">{{ workflowStore.prettyWorkflow }}</pre>
+          <pre class="p-4 text-sm text-green-400 overflow-auto h-[calc(100%-4rem)]">{{
+              workflowStore.prettyWorkflow
+            }}</pre>
         </div>
       </div>
 
       <!-- Right side: Workflow Graph -->
       <div class="w-2/3 p-4">
         <div class="h-full bg-gray-50 rounded-lg py-2">
-
-          <VueFlow v-if="isReady" :nodes="nodes" :edges="edges" @nodes-initialized="layoutGraph('TB')">
+          <VueFlow v-if="isReady && workflowStore.workflow.triggers.length" :nodes="nodes" :edges="edges"
+                   @nodes-initialized="layoutGraph('TB')">
 
             <template #node-group-action="props">
               <group-action-node :id="props.id" :data="props.data"/>
@@ -277,6 +184,10 @@ onUnmounted(() => {
               <trigger-node :id="props.id" :data="props.data"/>
             </template>
           </VueFlow>
+          <div v-else class="flex items-center justify-center h-full">
+            <p class="text-gray-500">No workflow trigger found. Please add a trigger to start building your
+              workflow.</p>
+          </div>
         </div>
       </div>
     </div>

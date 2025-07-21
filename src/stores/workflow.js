@@ -7,20 +7,45 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
     const baseURL = 'http://adomaticio.test/api/v1'
     const workflows = ref([])
-    const triggers = ref({})
+    const apps = ref([])
+    const connections = ref([])
     const workflow = ref(null)
-    const prettyWorkflow = computed(() => JSON.stringify(workflow.value, null, 2))
+    const prettyWorkflow = computed(() => {
+        // remove action from actions array and trigger from triggers array from workflow object before returning
+        let workflowCopy = JSON.parse(JSON.stringify(workflow.value))
+
+        workflowCopy.triggers = workflowCopy.triggers.map(trigger => {
+            const {trigger: triggerData, ...triggerWithoutTrigger} = trigger
+            return triggerWithoutTrigger
+        })
+
+        workflowCopy.actions = workflowCopy.actions.map(action => {
+            const {action: actionData, ...actionWithoutAction} = action
+            return actionWithoutAction
+        })
+
+        return JSON.stringify(workflowCopy, null, 2)
+    })
+
+    // TODO: clean up before sending request for the update/create
 
 
     const isActionsModalOpen = ref(false)
     const selectedAction = ref(null)
     const previousActionId = ref(null)
     const isInnerAction = ref(false)
-    const openActionModal = (action = null, link = null, isInner = false) => {
+    const isTriggerAction = ref(false)
+    const openActionModal = (isTrigger, action = null, link = null, isInner = false) => {
         selectedAction.value = action
         previousActionId.value = link
         isInnerAction.value = isInner
+        isTriggerAction.value = isTrigger
         isActionsModalOpen.value = true
+    }
+
+    // get connections by driver
+    const getConnectionsByDriver = (driver) => {
+        return connections.value.filter(connection => connection.driver === driver)
     }
 
     const closeActionModal = () => {
@@ -53,6 +78,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     }
                     closeActionModal()
                 }).catch((error) => {
+                    console.log('Error creating action:', error);
                     reject(error.response.data)
                 });
             }
@@ -60,6 +86,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
 
     const linkAction = (action, linkId) => {
+        console.log('Linking action:', action, 'to linkId:', linkId);
         return new Promise((resolve, reject) => {
             var index = -1
             var parentIndex = -1
@@ -75,7 +102,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
             }
 
             if (index !== -1) {
-                axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${linkId}`, {on_success: action.id})
+                let data = {...workflow.value.actions[index], on_success: action.id}
+                axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${linkId}`, data)
                     .then(response => {
                         if (response.data.success) {
                             if (action.parent_id) {
@@ -111,10 +139,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 name: 'new workflow',
                 store_ref: '',
                 description: '',
-                trigger: {
-                    type: '4',
-                    config: {}
-                },
+                folder_id: null,
+                triggers: [],
                 actions: []
             }
         }
@@ -126,11 +152,25 @@ export const useWorkflowStore = defineStore('workflow', () => {
         isWorkflowModalOpen.value = false
     }
 
-    const editWorkflow = (id) => {
+    const editWorkflow = async (id) => {
         workflow.value = workflows.value.find(workflow => workflow.id === id)
         if (!workflow.value) {
             console.error(`Workflow with id ${id} not found`)
             return
+        }
+
+
+        // Fetch the workflow details from the API
+        try {
+            const response = await axios.get(`${baseURL}/workflows/${id}/actions?with=action.app&with_count=actions`)
+            if (response.data.success) {
+                workflow.value.actions = response.data.data
+            } else {
+                console.error('Failed to fetch Workflow actions:', response.data.message)
+            }
+        } catch (error) {
+            console.error('Error fetching workflow actions:', error)
+            throw error
         }
 
         router.push({
@@ -169,12 +209,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     resolve(true)
                 } else {
                     console.error('Failed to create workflow:', response.data.message)
-                    reject(false)
+                    reject(response.data)
                 }
             }).catch(
                 error => {
-                    console.error('Error creating workflow:', error)
-                    reject(false)
+                    console.error('Error creating workflow:', error.response.data)
+                    reject(error.response.data)
                 }
             )
         })
@@ -205,7 +245,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
     const fetchWorkflows = async () => {
         try {
-            const response = await axios.get(`${baseURL}/workflows`)
+            const response = await axios.get(`${baseURL}/workflows?with=triggers.trigger.app&with_count=actions`)
             if (response.data.success) {
                 workflows.value = response.data.data
             } else {
@@ -217,16 +257,59 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
     }
 
-    const fetchWorkflowTriggers = async () => {
+    const fetchApps = async () => {
         try {
-            const response = await axios.get(`${baseURL}/workflows/triggers`)
+            const response = await axios.get(`${baseURL}/apps?with_count=actions,triggers`)
             if (response.data.success) {
-                triggers.value = response.data.data
+                apps.value = response.data.data
             } else {
-                console.error('Failed to fetch workflow triggers:', response.data.message)
+                console.error('Failed to fetch Apps:', response.data.message)
             }
         } catch (error) {
-            console.error('Error fetching workflow triggers:', error)
+            console.error('Error fetching Apps:', error)
+            throw error
+        }
+    }
+
+    const fetchConnections = async () => {
+        try {
+            const response = await axios.get(`${baseURL}/connections`)
+            if (response.data.success) {
+                connections.value = response.data.data
+            } else {
+                console.error('Failed to fetch Connections:', response.data.message)
+            }
+        } catch (error) {
+            console.error('Error fetching Connections:', error)
+            throw error
+        }
+    }
+
+    const fetchActions = async (app_index) => {
+
+        // skip if app already has actions
+        if (!apps.value[app_index]) {
+            console.error(`App not found`)
+            return
+        }
+
+        if (apps.value[app_index].actions) {
+            return
+        }
+
+        try {
+            const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions`)
+            if (response.data.success) {
+                if (apps.value[app_index]) {
+                    apps.value[app_index]['actions'] = response.data.data
+                } else {
+                    console.error(`App not found`)
+                }
+            } else {
+                console.error('Failed to fetch Apps:', response.data.message)
+            }
+        } catch (error) {
+            console.error('Error on fetching Apps:', error)
             throw error
         }
     }
@@ -236,16 +319,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             axios.post(`${baseURL}/workflows/${workflow.value.id}/actions`, action)
                 .then(response => {
                     if (response.data.success) {
-                        if (response.data.data.parent_id) {
-                            const parentIndex = workflow.value.actions.findIndex(a => a.id === response.data.data.parent_id)
-                            if (parentIndex !== -1) {
-                                workflow.value.actions[parentIndex].actions.push(response.data.data)
-                            } else {
-                                console.error(`Parent action with id ${response.data.data.parent_id} not found`);
-                            }
-                        } else {
-                            workflow.value.actions.push(response.data.data)
-                        }
+                        workflow.value.actions.push(response.data.data)
                         console.log('Action added successfully');
                         resolve(response.data.data);
                     } else {
@@ -303,60 +377,25 @@ export const useWorkflowStore = defineStore('workflow', () => {
         });
     }
 
-    const removeAction = (actionId, parent_id = null) => {
-
-        var index = -1;
-
-        if (parent_id) {
-            const parentIndex = workflow.value.actions.findIndex(a => a.id === parent_id)
-            if (parentIndex !== -1) {
-                index = workflow.value.actions[parentIndex].actions.findIndex(a => a.id === actionId)
-            }
-        } else {
-            index = workflow.value.actions.findIndex(a => a.id === actionId)
-        }
-
-
+    const removeAction = (action) => {
+        let index = workflow.value.actions.findIndex(a => a.id === action.id)
         if (index === -1) {
             console.error(`Action with index ${index} not found`);
             return;
         }
 
-        axios.delete(`${baseURL}/workflows/${workflow.value.id}/actions/${actionId}`)
+        axios.delete(`${baseURL}/workflows/${workflow.value.id}/actions/${action.id}`)
             .then(response => {
                 if (response.data.success) {
                     console.log('Action removed successfully');
-
-                    if (parent_id) {
-                        const parentIndex = workflow.value.actions.findIndex(a => a.id === parent_id)
-                        if (parentIndex !== -1) {
-                            workflow.value.actions[parentIndex].actions.splice(index, 1)
-                        } else {
-                            console.error(`Parent action with id ${parent_id} not found`);
-                        }
-                    } else {
-                        workflow.value.actions.splice(index, 1)
-                    }
+                    workflow.value.actions.splice(index, 1)
 
                     // remove actionId from other actions on_success
-                    if (parent_id) {
-                        const parentIndex = workflow.value.actions.findIndex(a => a.id === parent_id)
-                        if (parentIndex !== -1) {
-                            workflow.value.actions[parentIndex].actions.forEach(action => {
-                                if (action.on_success === actionId) {
-                                    action.on_success = null
-                                }
-                            })
+                    workflow.value.actions.forEach(action => {
+                        if (action.on_success === action.id) {
+                            action.on_success = null
                         }
-                    } else {
-                        workflow.value.actions.forEach(action => {
-                            if (action.on_success === actionId) {
-                                action.on_success = null
-                            }
-                        })
-                    }
-
-
+                    })
                 } else {
                     console.error('Failed to remove action:', response.data.message);
                 }
@@ -374,13 +413,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
     return {
         workflow,
         prettyWorkflow,
-        triggers,
+        apps,
         workflows,
         isWorkflowModalOpen,
         isActionsModalOpen,
         selectedAction,
         previousActionId,
         isInnerAction,
+        isTriggerAction,
+        getConnectionsByDriver,
         openActionModal,
         closeActionModal,
         openWorkflowModal,
@@ -390,7 +431,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
         deleteWorkflow,
         editWorkflow,
         fetchWorkflows,
-        fetchWorkflowTriggers,
+        fetchApps,
+        fetchConnections,
+        fetchActions,
         removeAction,
         resetWorkflow,
         saveAction,

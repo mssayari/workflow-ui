@@ -46,7 +46,7 @@ const updateValue = (id, newValue) => {
 }
 
 onMounted(() => {
-  console.log(props.value)
+  // console.log(props.value)
 })
 
 </script>

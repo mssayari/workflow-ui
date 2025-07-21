@@ -49,7 +49,7 @@ export function useLayout() {
                 ...node,
                 targetPosition: isHorizontal ? Position.Left : Position.Top,
                 sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-                position: { x: nodeWithPosition.x, y: nodeWithPosition.y + (node.type === 'group-action' ? -80 : 0) },
+                position: { x: nodeWithPosition.x, y: nodeWithPosition.y },
             }
         })
     }
