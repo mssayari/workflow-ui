@@ -61,6 +61,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     resolve(true)
                     closeActionModal()
                 }).catch((error) => {
+                    console.log('Error updating action:', error);
                     reject(error.response.data)
                 });
             } else {
@@ -337,29 +338,14 @@ export const useWorkflowStore = defineStore('workflow', () => {
     const updateAction = (action) => {
         return new Promise((resolve, reject) => {
 
-            var index = -1
-            if (action.parent_id) {
-                const parentIndex = workflow.value.actions.findIndex(a => a.id === action.parent_id)
-                if (parentIndex !== -1) {
-                    index = workflow.value.actions[parentIndex].actions.findIndex(a => a.id === action.id)
-                } else {
-                    console.error(`Parent action with id ${action.parent_id} not found`);
-                }
-            } else {
-                index = workflow.value.actions.findIndex(a => a.id === action.id)
-            }
-
+            let index = -1
+            index = workflow.value.actions.findIndex(a => a.id === action.id)
 
             if (index !== -1) {
                 axios.put(`${baseURL}/workflows/${workflow.value.id}/actions/${action.id}`, action)
                     .then(response => {
                         if (response.data.success) {
-                            if (action.parent_id) {
-                                const parentIndex = workflow.value.actions.findIndex(a => a.id === action.parent_id)
-                                workflow.value.actions[parentIndex].actions[index] = response.data.data
-                            } else {
-                                workflow.value.actions[index] = response.data.data
-                            }
+                            workflow.value.actions[index] = response.data.data
                             console.log('Action updated successfully');
                             resolve(true);
                         } else {
