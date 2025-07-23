@@ -33,8 +33,8 @@ const logicOptions = ['AND', 'OR'];
 const operatorOptions = ref([]);
 
 const setOperators = () => {
-  if (props.schema.items?.properties?.conditions.items.properties.operator.enum) {
-    operatorOptions.value = props.schema.items.properties.conditions.items.properties.operator.enum;
+  if (props.schema.items?.properties?.conditions.items.properties.operator.options) {
+    operatorOptions.value = props.schema.items.properties.conditions.items.properties.operator.options;
   }
 };
 
@@ -85,7 +85,7 @@ const operatorRequiresValue = (operator) => {
     <div class="flex justify-between items-center">
       <label class="font-semibold">Logic</label>
       <select v-model="localGroup.logic" class="px-2 py-1 border rounded-md">
-        <option v-for="logic in logicOptions" :key="logic" :value="logic">{{ logic }}</option>
+        <option v-for="logic in schema.items.properties.logic.options" :key="logic" :value="logic">{{ logic }}</option>
       </select>
     </div>
 

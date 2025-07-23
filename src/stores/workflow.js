@@ -52,6 +52,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
         isActionsModalOpen.value = false
         selectedAction.value = null
         previousActionId.value = null
+        isTriggerAction.value = false
+        isInnerAction.value = false
     }
 
     const saveAction = (actionData) => {
@@ -77,6 +79,28 @@ export const useWorkflowStore = defineStore('workflow', () => {
                             closeActionModal()
                         })
                     }
+                    closeActionModal()
+                }).catch((error) => {
+                    console.log('Error creating action:', error);
+                    reject(error.response.data)
+                });
+            }
+        });
+    }
+
+    const saveTrigger = (triggerData) => {
+        return new Promise((resolve, reject) => {
+            if (selectedAction.value && !isInnerAction.value) {
+                updateTrigger(triggerData).then(() => {
+                    resolve(true)
+                    closeActionModal()
+                }).catch((error) => {
+                    console.log('Error updating trigger:', error);
+                    reject(error.response.data)
+                });
+            } else {
+                const newTrigger = {...triggerData}
+                createTrigger(newTrigger).then((createdTrigger) => {
                     closeActionModal()
                 }).catch((error) => {
                     console.log('Error creating action:', error);
@@ -286,7 +310,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
     }
 
-    const fetchActions = async (app_index) => {
+    const fetchActions = async (app_index, isTrigger = false) => {
 
         // skip if app already has actions
         if (!apps.value[app_index]) {
@@ -299,18 +323,18 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
 
         try {
-            const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions`)
+            const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions` + (isTrigger ? '?type=trigger' : ''))
             if (response.data.success) {
                 if (apps.value[app_index]) {
-                    apps.value[app_index]['actions'] = response.data.data
+                    apps.value[app_index][isTrigger? 'triggers' :'actions'] = response.data.data
                 } else {
                     console.error(`App not found`)
                 }
             } else {
-                console.error('Failed to fetch Apps:', response.data.message)
+                console.error('Failed to fetch Actions:', response.data.message)
             }
         } catch (error) {
-            console.error('Error on fetching Apps:', error)
+            console.error('Error on fetching Actions:', error)
             throw error
         }
     }
@@ -322,6 +346,26 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     if (response.data.success) {
                         workflow.value.actions.push(response.data.data)
                         console.log('Action added successfully');
+                        resolve(response.data.data);
+                    } else {
+                        // console.error('Failed to add action:', response.data.message);
+                        reject(response.data);
+                    }
+                })
+                .catch(error => {
+                    // console.error('Error adding action:', error);
+                    reject(error);
+                });
+        });
+    }
+
+    const createTrigger = (trigger) => {
+        return new Promise((resolve, reject) => {
+            axios.post(`${baseURL}/workflows/${workflow.value.id}/triggers`, trigger)
+                .then(response => {
+                    if (response.data.success) {
+                        workflow.value.triggers.push(response.data.data)
+                        console.log('Trigger added successfully');
                         resolve(response.data.data);
                     } else {
                         // console.error('Failed to add action:', response.data.message);
@@ -359,6 +403,33 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     });
             } else {
                 console.error(`Action with id ${action.id} not found`);
+            }
+        });
+    }
+
+    const updateTrigger = (trigger) => {
+        return new Promise((resolve, reject) => {
+            let index = -1
+            index = workflow.value.triggers.findIndex(a => a.id === trigger.id)
+
+            if (index !== -1) {
+                axios.put(`${baseURL}/workflows/${workflow.value.id}/triggers/${trigger.id}`, trigger)
+                    .then(response => {
+                        if (response.data.success) {
+                            workflow.value.triggers[index] = response.data.data
+                            console.log('Trigger updated successfully');
+                            resolve(true);
+                        } else {
+                            console.error('Failed to update trigger:', response.data.message);
+                            reject(response.data);
+                        }
+                    })
+                    .catch(error => {
+                        reject(error);
+                        console.error('Error updating trigger:', error);
+                    });
+            } else {
+                console.error(`Trigger with id ${trigger.id} not found`);
             }
         });
     }
@@ -423,5 +494,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
         removeAction,
         resetWorkflow,
         saveAction,
+        saveTrigger,
     }
 })

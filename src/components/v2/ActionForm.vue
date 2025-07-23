@@ -50,16 +50,19 @@ const handleSubmit = () => {
     return
   }
 
-  if(isTriggerAction.value){
+  if (isTriggerAction.value) {
     form.value.trigger_id = workflowStore.apps[selectedAppIndex.value].triggers[selectedActionIndex.value].id
-  }else{
+    workflowStore.saveTrigger(form.value).catch(response => {
+      errors.value = response.errors
+    })
+  } else {
     form.value.action_id = workflowStore.apps[selectedAppIndex.value].actions[selectedActionIndex.value].id
+    workflowStore.saveAction(form.value).catch(response => {
+      // console.log(response)
+      errors.value = response.errors
+    })
   }
 
-  workflowStore.saveAction(form.value).catch(response => {
-    // console.log(response)
-    errors.value = response.errors
-  })
 
   // emit('save', form.value)
 }
@@ -70,6 +73,9 @@ const isTriggerAction = ref(false)
 const schema = computed(() => {
   if (selectedAppIndex.value === null || selectedActionIndex.value === null) {
     return []
+  }
+  if (isTriggerAction.value) {
+    return workflowStore.apps[selectedAppIndex.value].triggers[selectedActionIndex.value].form_schema
   }
   return workflowStore.apps[selectedAppIndex.value].actions[selectedActionIndex.value].form_schema
 })
@@ -92,7 +98,7 @@ const initConfig = (bindValues = false) => {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else if (item.format === 'filter') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
-        } else if (item.format === 'transform') {
+        } else if (item.format === 'transformations') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else if (item.format === 'derived-columns') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
@@ -110,7 +116,7 @@ const initConfig = (bindValues = false) => {
 watch(selectedAppIndex, (newIndex) => {
   if (newIndex !== null) {
     selectedActionIndex.value = null
-    workflowStore.fetchActions(newIndex)
+    workflowStore.fetchActions(newIndex, isTriggerAction.value)
   } else {
     console.log('No app selected')
   }
@@ -141,7 +147,11 @@ onMounted(() => {
 
     //TODO: should replace with promise based fetch
     setTimeout(() => {
-      selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].actions.findIndex(action => action.id === action_id)
+      if (isTriggerAction.value) {
+        selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].triggers.findIndex(action => action.id === action_id)
+      } else {
+        selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].actions.findIndex(action => action.id === action_id)
+      }
     }, 500)
   } else {
     initConfig()
@@ -174,29 +184,35 @@ onMounted(() => {
         <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
         <select v-model="selectedActionIndex" :disabled="!workflowStore.apps[selectedAppIndex]"
                 class="w-full p-2 border border-gray-300 rounded-md">
-          <option v-for="(action,index) in workflowStore.apps[selectedAppIndex]?.actions || []" :key="index"
-                  :value="index">
+          <option
+              v-for="(action,index) in isTriggerAction ? workflowStore.apps[selectedAppIndex]?.triggers : workflowStore.apps[selectedAppIndex]?.actions || []"
+              :key="index"
+              :value="index">
             {{ action.name }}
           </option>
         </select>
-        <span v-if="selectedActionIndex !== null"
-              class="text-sm text-gray-500 ps-1">{{
-            workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description
-          }}</span>
+        <span v-if="selectedActionIndex !== null && !isTriggerAction" class="text-sm text-gray-500 ps-1">
+          {{ workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description }}
+        </span>
+        <span v-if="selectedActionIndex !== null && isTriggerAction" class="text-sm text-gray-500 ps-1">
+          {{ workflowStore.apps[selectedAppIndex].triggers[selectedActionIndex].description }}
+        </span>
       </div>
-      <div v-if="selectedAppIndex !== null && workflowStore.apps[selectedAppIndex].connection_driver !== null" class="flex flex-col">
+      <div v-if="selectedAppIndex !== null && workflowStore.apps[selectedAppIndex].connection_driver !== null"
+           class="flex flex-col">
         <label class="block text-sm font-medium text-gray-700 mb-1">Connection</label>
         <select v-model="form.connection_id"
                 class="w-full p-2 border border-gray-300 rounded-md">
-          <option v-for="(connection,index) in workflowStore.getConnectionsByDriver(workflowStore.apps[selectedAppIndex].connection_driver) || []" :key="index"
-                  :value="connection.id">
+          <option
+              v-for="(connection,index) in workflowStore.getConnectionsByDriver(workflowStore.apps[selectedAppIndex].connection_driver) || []"
+              :key="index"
+              :value="connection.id">
             {{ connection.name }}
           </option>
         </select>
-        <span v-if="selectedActionIndex !== null"
-              class="text-sm text-gray-500 ps-1">{{
-            workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description
-          }}</span>
+        <span v-if="selectedActionIndex !== null" class="text-sm text-gray-500 ps-1">
+          Select a connection to use for this action.
+        </span>
         <span v-if="errors['connection_id']" class="text-red-500 text-sm ps-1">{{ errors['connection_id'][0] }}</span>
       </div>
     </div>

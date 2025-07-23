@@ -7,6 +7,10 @@ const props = defineProps({
   value: {
     type: Array,
     default: () => []
+  },
+  schema: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -23,7 +27,7 @@ const addTransform = () => {
   localTransforms.value.push({
     id: uuidv4(),
     column: '',
-    operation: 'lowercase',
+    operation: props.schema.items.properties.operation.options[0].value, // Default to first option
     search: '',
     replace: '',
     format: '',
@@ -40,21 +44,11 @@ const updateField = (id, key, value) => {
   if (transform) transform[key] = value
 }
 
-const operationOptions = [
-  {value: 'lowercase', label: 'Lowercase'},
-  {value: 'uppercase', label: 'Uppercase'},
-  {value: 'titlecase', label: 'Title Case'},
-  {value: 'trim', label: 'Trim'},
-  {value: 'replace', label: 'Find & Replace'},
-  {value: 'regex_replace', label: 'Regex-based replace'},
-  {value: 'cast_to_int', label: 'Cast to Integer'},
-  {value: 'cast_to_date', label: 'Cast to Date'},
-  {value: 'slug', label: 'Slugify'},
-  {value: 'explode', label: 'Explode'},
-]
+const operationOptions = ref([]);
 
 onMounted(() => {
-  // console.log(props.value)
+  operationOptions.value = props.schema.items.properties.operation.options
+  // console.log(props.schema)
 })
 
 </script>

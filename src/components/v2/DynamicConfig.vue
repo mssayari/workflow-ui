@@ -109,8 +109,8 @@ onMounted(() => {
                             v-model:value="localConfig[field.name]" :schema="field" />
 
         <!-- JSON Transform -->
-        <json-transform-editor v-else-if="field.type === 'json' && field.format === 'transform'"
-                               v-model:value="localConfig[field.name]" />
+        <json-transform-editor v-else-if="field.type === 'json' && field.format === 'transformations'"
+                               v-model:value="localConfig[field.name]" :schema="field"/>
 
         <!-- JSON Derived Columns -->
         <json-derived-columns-editor v-else-if="field.type === 'json' && field.format === 'derived-columns'"

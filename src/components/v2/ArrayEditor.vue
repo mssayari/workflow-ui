@@ -35,7 +35,7 @@ const updateValue = (id, newValue) => {
 }
 
 onMounted(() => {
-  console.log(props.schema)
+  // console.log(props.schema)
 })
 
 </script>
