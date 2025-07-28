@@ -6,6 +6,7 @@ import JsonTransformEditor from "@/components/v2/JsonTransformEditor.vue";
 import JsonDerivedColumnsEditor from "@/components/v2/JsonDerivedColumnsEditor.vue";
 import ConditionGroupBuilder from "@/components/v2/ConditionGroupBuilder.vue";
 import ArrayEditor from "@/components/v2/ArrayEditor.vue";
+import { IconEye, IconEyeClosed } from '@tabler/icons-vue'
 
 
 const props = defineProps({
@@ -27,6 +28,13 @@ const emit = defineEmits(['update:config'])
 
 const localConfig = ref({ ...props.config })
 const jsonFields = ref({})
+
+const showPassword = ref({})
+
+const togglePassword = (fieldName) => {
+  showPassword.value[fieldName] = !showPassword.value[fieldName]
+}
+
 
 // Watch for external config changes
 watch(() => props.config, (newConfig) => {
@@ -131,6 +139,25 @@ onMounted(() => {
             <input type="checkbox" v-model="localConfig[field.name]" class="mr-2"/>
             <span>{{ field.label }}</span>
           </label>
+        </div>
+
+        <!-- Password -->
+        <div v-else-if="field.type === 'password'" class="relative">
+          <input
+              v-model="localConfig[field.name]"
+              :type="showPassword[field.name] ? 'text' : 'password'"
+              :placeholder="field.placeholder"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md pr-10"
+          />
+          <button
+              type="button"
+              @click="togglePassword(field.name)"
+              class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+              tabindex="-1"
+          >
+            <icon-eye v-if="showPassword[field.name]" class="h-5 w-5" />
+            <icon-eye-closed v-else class="h-5 w-5" />
+          </button>
         </div>
 
         <span class="text-sm text-gray-500 ps-1">{{ field.description }}</span>
