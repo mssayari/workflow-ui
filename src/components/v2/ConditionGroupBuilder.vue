@@ -26,10 +26,24 @@ const localGroup = ref({
 });
 
 watch(localGroup, (val) => {
+
+  console.log(val.conditions.length);
+  console.log(val.groups.length);
+
+
+  // skip if it's empty
+  if (Object.keys(val).length === 0) {
+    return;
+  }
+
+  // or if it has no conditions or groups
+  if ((val.conditions && val.conditions.length === 0) && (val.groups && val.groups.length === 0)) {
+    return;
+  }
+
   emit('update:value', val);
 }, { deep: true });
 
-const logicOptions = ['AND', 'OR'];
 const operatorOptions = ref([]);
 
 const setOperators = () => {

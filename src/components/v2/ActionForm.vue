@@ -181,7 +181,7 @@ onMounted(() => {
               class="text-sm text-gray-500 ps-1">{{ workflowStore.apps[selectedAppIndex].description }}</span>
       </div>
       <div v-if="selectedAppIndex !== null" class="">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ isTriggerAction ? 'Trigger' : 'Action' }}</label>
         <select v-model="selectedActionIndex" :disabled="!workflowStore.apps[selectedAppIndex]"
                 class="w-full p-2 border border-gray-300 rounded-md">
           <option

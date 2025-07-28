@@ -323,7 +323,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
 
         try {
-            const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions` + (isTrigger ? '?type=trigger' : ''))
+            const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions` + (isTrigger ? '?type=trigger' : '?type=action'))
             if (response.data.success) {
                 if (apps.value[app_index]) {
                     apps.value[app_index][isTrigger? 'triggers' :'actions'] = response.data.data

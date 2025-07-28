@@ -84,7 +84,11 @@ const generateNodesAndEdges = () => {
   // add edges from trigger to the action that it's id is not in any on_success
   if (workflowStore.workflow.actions.length) {
     const chain_ids = workflowStore.workflow.actions.map(action => action.on_success).filter(id => id !== null)
-    const firstAction = workflowStore.workflow.actions.find(action => !chain_ids.includes(action.id))
+
+    // find the first action that is not in the chain_ids and not have parent_id
+    const firstAction = workflowStore.workflow.actions.find(action => !chain_ids.includes(action.id) && !action.parent_id);
+
+
 
     if (firstAction && firstAction.id) {
       // find the trigger node
@@ -184,9 +188,12 @@ onUnmounted(() => {
               <trigger-node :id="props.id" :data="props.data"/>
             </template>
           </VueFlow>
-          <div v-else class="flex items-center justify-center h-full">
+          <div v-else class="flex flex-col gap-2 items-center justify-center h-full">
             <p class="text-gray-500">No workflow trigger found. Please add a trigger to start building your
               workflow.</p>
+            <button @click="workflowStore.openActionModal(true)"
+                    class="ml-4 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Add Trigger
+            </button>
           </div>
         </div>
       </div>
