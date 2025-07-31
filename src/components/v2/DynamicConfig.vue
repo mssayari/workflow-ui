@@ -7,6 +7,7 @@ import JsonDerivedColumnsEditor from "@/components/v2/JsonDerivedColumnsEditor.v
 import ConditionGroupBuilder from "@/components/v2/ConditionGroupBuilder.vue";
 import ArrayEditor from "@/components/v2/ArrayEditor.vue";
 import { IconEye, IconEyeClosed } from '@tabler/icons-vue'
+import AISchemaBuilder from "@/components/v2/AISchemaBuilder.vue";
 
 
 const props = defineProps({
@@ -112,6 +113,10 @@ onMounted(() => {
         <condition-group-builder v-else-if="field.type === 'json' && field.format === 'condition-builder'"
                                 v-model:value="localConfig[field.name]" :schema="field" />
 
+        <!-- AI Schema Builder -->
+        <a-i-schema-builder v-else-if="field.type === 'json' && field.format === 'ai-schema-builder'"
+                               v-model:value="localConfig[field.name]" :schema="field" :is-nested-object="true" />
+
         <!-- JSON Filter -->
         <json-filter-editor v-else-if="field.type === 'json' && field.format === 'filter'"
                             v-model:value="localConfig[field.name]" :schema="field" />
@@ -159,9 +164,9 @@ onMounted(() => {
             <icon-eye-closed v-else class="h-5 w-5" />
           </button>
         </div>
-
+        <div><span v-if="errors['config.'+ field.name]" class="text-red-500 text-sm">{{ errors['config.'+ field.name][0] }}</span></div>
         <span class="text-sm text-gray-500 ps-1">{{ field.description }}</span>
-        <span v-if="errors['config.'+ field.name]" class="text-red-500 text-sm">{{ errors['config.'+ field.name][0] }}</span>
+
       </div>
     </template>
   </div>

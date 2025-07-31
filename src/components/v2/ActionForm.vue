@@ -102,6 +102,8 @@ const initConfig = (bindValues = false) => {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else if (item.format === 'derived-columns') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        } else if (item.format === 'ai-schema-builder') {
+          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || {}) : {}
         }
