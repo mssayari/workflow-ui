@@ -24,7 +24,6 @@ const addColumn = () => {
     id: uuidv4(),
     name: '',
     value: '',
-    template: '',
     slugify: false
   })
 }
@@ -62,13 +61,6 @@ const updateField = (id, key, newValue) => {
               placeholder="Static Value"
               :value="col.value"
               @input="updateField(col.id, 'value', $event.target.value)"
-          />
-
-          <input
-              class="px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="Template (optional)"
-              :value="col.template"
-              @input="updateField(col.id, 'template', $event.target.value)"
           />
 
           <label class="flex items-center space-x-1 text-sm">

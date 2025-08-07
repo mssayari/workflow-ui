@@ -27,10 +27,6 @@ const localGroup = ref({
 
 watch(localGroup, (val) => {
 
-  console.log(val.conditions.length);
-  console.log(val.groups.length);
-
-
   // skip if it's empty
   if (Object.keys(val).length === 0) {
     return;

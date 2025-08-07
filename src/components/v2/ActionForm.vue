@@ -94,9 +94,9 @@ const initConfig = (bindValues = false) => {
         form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || false) : false
         break
       case 'json':
-        if (item.format === 'condition-builder') {
+       /* if (item.format === 'condition-builder') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
-        } else if (item.format === 'filter') {
+        } else */if (item.format === 'filter') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else if (item.format === 'transformations') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []

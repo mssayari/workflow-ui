@@ -346,6 +346,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     if (response.data.success) {
                         workflow.value.actions.push(response.data.data)
                         console.log('Action added successfully');
+
+                        // increment actions count for the parent action if it exists
+                        // if (action.parent_id) {
+                        //     const parentIndex = workflow.value.actions.findIndex(a => a.id === action.parent_id)
+                        //     if (parentIndex !== -1) {
+                        //         workflow.value.actions[parentIndex].actions_count = (workflow.value.actions[parentIndex].actions_count || 0) + 1
+                        //     } else {
+                        //         console.error(`Parent action with id ${action.parent_id} not found`);
+                        //     }
+                        // }
+
                         resolve(response.data.data);
                     } else {
                         // console.error('Failed to add action:', response.data.message);
