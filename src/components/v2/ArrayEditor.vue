@@ -52,6 +52,10 @@ onMounted(() => {
       <input v-else-if="schema.format === 'number'" type="number" :value="item.value"
              @input="updateValue(item.id, parseFloat($event.target.value))" class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
 
+      <!-- if format is email -->
+      <input v-else-if="schema.format === 'email'" type="email" :value="item.value"
+             @input="updateValue(item.id, $event.target.value)" class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+
       <!-- else treat as string -->
       <input v-else :value="item.value" @input="updateValue(item.id, $event.target.value)" placeholder="Value"
              class="w-full px-3 py-2 border border-gray-300 rounded-md"/>

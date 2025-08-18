@@ -97,6 +97,15 @@ onMounted(() => {
                class="w-full px-3 py-2 border border-gray-300 rounded-md"
         />
 
+        <!-- Email -->
+        <input v-else-if="field.type === 'email'"
+               v-model="localConfig[field.name]"
+               type="email"
+               :placeholder="field.placeholder || 'example@email.test'"
+               spellcheck="false"
+               class="w-full px-3 py-2 border border-gray-300 rounded-md"
+        />
+
         <!-- Input field -->
         <input v-else-if="field.type === 'string' || field.type === 'number'"
                v-model="localConfig[field.name]"
