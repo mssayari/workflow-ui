@@ -1,8 +1,8 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue'
-import DynamicConfig from './DynamicConfig.vue'
 import {useActionStore} from "@/stores/action.js";
 import {useWorkflowStore} from "@/stores/workflow.js";
+import SchemaBuilder from "@/components/v2/SchemaBuilder.vue";
 
 
 const props = defineProps({
@@ -74,10 +74,12 @@ const schema = computed(() => {
   if (selectedAppIndex.value === null || selectedActionIndex.value === null) {
     return []
   }
+  const app = workflowStore.apps[selectedAppIndex.value]
+
   if (isTriggerAction.value) {
-    return workflowStore.apps[selectedAppIndex.value].triggers[selectedActionIndex.value].form_schema
+    return app?.triggers?.[selectedActionIndex.value]?.form_schema || []
   }
-  return workflowStore.apps[selectedAppIndex.value].actions[selectedActionIndex.value].form_schema
+  return app?.actions?.[selectedActionIndex.value]?.form_schema || []
 })
 
 const initConfig = (bindValues = false) => {
@@ -91,12 +93,13 @@ const initConfig = (bindValues = false) => {
         form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
         break
       case 'boolean':
-        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || false) : false
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
         break
       case 'json':
-       /* if (item.format === 'condition-builder') {
-          form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
-        } else */if (item.format === 'filter') {
+        /* if (item.format === 'condition-builder') {
+           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+         } else */
+        if (item.format === 'filter') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
         } else if (item.format === 'transformations') {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
@@ -108,6 +111,9 @@ const initConfig = (bindValues = false) => {
           form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || {}) : {}
         }
         break
+      case 'array':
+        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || []) : []
+        break
       default:
         form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
     }
@@ -115,10 +121,11 @@ const initConfig = (bindValues = false) => {
 }
 
 // on selectedAppIndex change fetch actions for that app
-watch(selectedAppIndex, (newIndex) => {
+watch(selectedAppIndex, async (newIndex) => {
   if (newIndex !== null) {
     selectedActionIndex.value = null
-    workflowStore.fetchActions(newIndex, isTriggerAction.value)
+    // Ensure data is loaded before anything tries to read it
+    await workflowStore.fetchActions(newIndex, isTriggerAction.value)
   } else {
     console.log('No app selected')
   }
@@ -137,8 +144,7 @@ watch(selectedActionIndex, (newIndex) => {
 })
 
 
-onMounted(() => {
-
+onMounted(async () => {
   isTriggerAction.value = workflowStore.isTriggerAction
   let app_id = isTriggerAction.value ? props.action?.trigger?.app_id : props.action?.action?.app_id
   let action_id = isTriggerAction.value ? props.action?.trigger?.id : props.action?.action?.id
@@ -147,20 +153,20 @@ onMounted(() => {
     form.value = {...props.action}
     selectedAppIndex.value = workflowStore.apps.findIndex(app => app.id === app_id)
 
-    //TODO: should replace with promise based fetch
-    setTimeout(() => {
-      if (isTriggerAction.value) {
-        selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].triggers.findIndex(action => action.id === action_id)
-      } else {
-        selectedActionIndex.value = workflowStore.apps[selectedAppIndex.value].actions.findIndex(action => action.id === action_id)
-      }
-    }, 500)
+    // Load actions/triggers for the selected app before selecting the action
+    if (selectedAppIndex.value !== -1) {
+      await workflowStore.fetchActions(selectedAppIndex.value, isTriggerAction.value)
+      const app = workflowStore.apps[selectedAppIndex.value]
+      const list = isTriggerAction.value ? (app?.triggers || []) : (app?.actions || [])
+      selectedActionIndex.value = list.findIndex(action => action.id === action_id)
+    }
   } else {
     initConfig()
   }
 
   isReady.value = true
 })
+
 
 </script>
 <template>
@@ -194,10 +200,10 @@ onMounted(() => {
           </option>
         </select>
         <span v-if="selectedActionIndex !== null && !isTriggerAction" class="text-sm text-gray-500 ps-1">
-          {{ workflowStore.apps[selectedAppIndex].actions[selectedActionIndex].description }}
+          {{ workflowStore.apps[selectedAppIndex]?.actions?.[selectedActionIndex]?.description }}
         </span>
         <span v-if="selectedActionIndex !== null && isTriggerAction" class="text-sm text-gray-500 ps-1">
-          {{ workflowStore.apps[selectedAppIndex].triggers[selectedActionIndex].description }}
+          {{ workflowStore.apps[selectedAppIndex]?.triggers?.[selectedActionIndex]?.description }}
         </span>
       </div>
       <div v-if="selectedAppIndex !== null && workflowStore.apps[selectedAppIndex].connection_driver !== null"
@@ -220,7 +226,7 @@ onMounted(() => {
     </div>
 
     <!-- Dynamic config fields based on action type -->
-    <dynamic-config :config="form.config" @update:config="updateConfig" :schema="schema" :errors="errors"/>
+    <schema-builder :config="form.config" @update:config="updateConfig" :schema="schema" :errors="errors"/>
 
     <div class="flex justify-end gap-3 mt-6">
       <button type="button" @click="$emit('cancel')"

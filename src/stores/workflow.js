@@ -6,6 +6,7 @@ import router from "@/router/router.js";
 export const useWorkflowStore = defineStore('workflow', () => {
 
     const baseURL = 'http://adomaticio.test/api/v1'
+    const token = ref(null)
     const workflows = ref([])
     const apps = ref([])
     const connections = ref([])
@@ -310,6 +311,34 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
     }
 
+
+    const getToken = () => {
+        return new Promise((resolve, reject) => {
+            axios.get(`http://adomaticio.test/auth-token`)
+                .then(response => {
+                    if (response.data.success) {
+                        token.value = response.data.data.token
+                        axios.interceptors.request.use(config => {
+                            if (token.value) {
+                                config.headers.Authorization = `Bearer ${token.value}`;
+                            }
+                            return config;
+                        }, error => {
+                            return Promise.reject(error);
+                        });
+                        resolve(true)
+                    } else {
+                        console.error('Failed to fetch token:', response.data.message)
+                        reject(false)
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching token:', error)
+                    reject(error)
+                })
+        })
+    }
+
     const fetchActions = async (app_index, isTrigger = false) => {
 
         // skip if app already has actions
@@ -326,7 +355,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             const response = await axios.get(`${baseURL}/apps/${apps.value[app_index].id}/actions` + (isTrigger ? '?type=trigger' : '?type=action'))
             if (response.data.success) {
                 if (apps.value[app_index]) {
-                    apps.value[app_index][isTrigger? 'triggers' :'actions'] = response.data.data
+                    apps.value[app_index][isTrigger ? 'triggers' : 'actions'] = response.data.data
                 } else {
                     console.error(`App not found`)
                 }
@@ -459,9 +488,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
                     workflow.value.actions.splice(index, 1)
 
                     // remove actionId from other actions on_success
-                    workflow.value.actions.forEach(action => {
-                        if (action.on_success === action.id) {
-                            action.on_success = null
+                    workflow.value.actions.forEach(ac => {
+                        if (ac.on_success === action.id) {
+                            ac.on_success = null
                         }
                     })
                 } else {
@@ -506,5 +535,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
         resetWorkflow,
         saveAction,
         saveTrigger,
+        getToken,
     }
 })

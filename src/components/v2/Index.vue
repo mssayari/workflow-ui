@@ -2,27 +2,25 @@
 import {onMounted} from "vue";
 import {useWorkflowStore} from "@/stores/workflow.js";
 import Layout from "@/components/v2/Layout.vue";
-import {IconTransform, IconEdit, IconTrash} from "@tabler/icons-vue";
+import {IconEdit, IconTrash} from "@tabler/icons-vue";
 import {useActionStore} from "@/stores/action.js";
 
 const workflowStore = useWorkflowStore()
 const actionStore = useActionStore()
 
 onMounted(() => {
+  // workflowStore.getToken().then(token => {
   workflowStore.fetchConnections()
   workflowStore.fetchApps()
-  workflowStore.fetchWorkflows()
-  actionStore.fetchActions()
-
-  // reset workflow store
-
-
+  // workflowStore.fetchWorkflows()
+  // actionStore.fetchActions()
+  // })
 });
 </script>
 
 <template>
   <layout>
-    <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
+    <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 p-3">
       <li v-for="workflow in workflowStore.workflows" :key="workflow.id"
           class="bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm duration-300">
         <div class="bg-gray-100 rounded-t-lg flex justify-between items-center gap-1 p-2.5">

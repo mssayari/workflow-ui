@@ -2,8 +2,6 @@
 import {Handle, Position, useVueFlow} from '@vue-flow/core'
 import {IconPlus, IconX, IconEdit, IconCirclePlus2} from '@tabler/icons-vue'
 import {useWorkflowStore} from "@/stores/workflow.js";
-import {useActionStore} from "@/stores/action.js";
-import defaultAttributes from "@tabler/icons-vue/dist/esm/defaultAttributes.mjs";
 import {onMounted} from "vue";
 
 const props = defineProps({
@@ -20,7 +18,6 @@ const props = defineProps({
 const {updateNodeData, getConnectedEdges} = useVueFlow()
 
 const workflowStore = useWorkflowStore()
-const actionStore = useActionStore()
 
 function onSelect(color) {
   updateNodeData(props.id, {color, isGradient: false})

@@ -34,6 +34,7 @@ watch(localGroup, (val) => {
 
   // or if it has no conditions or groups
   if ((val.conditions && val.conditions.length === 0) && (val.groups && val.groups.length === 0)) {
+    emit('update:value', []);
     return;
   }
 
