@@ -42,8 +42,6 @@ function removeItem(index) {
 }
 
 const updateValue = (index, newValue, format) => {
-  console.log()
-
   // Parse the value based on format
   let parsedValue = newValue
   switch (format) {
@@ -59,6 +57,15 @@ const updateValue = (index, newValue, format) => {
 
   // Update the value directly without replacing the object
   localValue.value[index] = parsedValue
+}
+
+const shouldShow = (field,index) => {
+  if (!field || !field.show) return true;
+  if (field.show) {
+    if (typeof field.show === 'object') {
+      return Object.entries(field.show).every(([key, value]) => localValue.value[index][key] === value)
+    }
+  }
 }
 
 onMounted(() => {
@@ -103,6 +110,7 @@ onMounted(() => {
          <div v-for="prop in schema.items.properties" :key="prop.name">
            <schema-field
                :field="prop"
+               v-if="shouldShow(prop,index)"
                v-model="localValue[index][prop.name]"
                :errors="errors"
                :path="path+ '['+index+']' + '.' + prop.name"

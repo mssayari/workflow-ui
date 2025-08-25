@@ -93,7 +93,9 @@ const initConfig = (bindValues = false) => {
         form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
         break
       case 'boolean':
-        form.value.config[item.name] = bindValues ? (props.action?.config[item.name] || item.default) : item.default
+        form.value.config[item.name] = bindValues
+            ? (props.action?.config.hasOwnProperty(item.name) ? props.action.config[item.name] : item.default)
+            : item.default
         break
       case 'json':
         /* if (item.format === 'condition-builder') {
