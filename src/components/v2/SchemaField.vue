@@ -37,16 +37,13 @@ function getDefaultValue(field, modelValue) {
   return defaultByType[field.type] ?? null
 }
 
+// Add this in your <script setup> section
+function onFileChange(event) {
+  const files = event.target.files;
+  localValue.value = files[0];
+}
+
 const localValue = ref(getDefaultValue(props.field, props.modelValue))
-
-
-// watch(
-//     () => [props.modelValue, props.field.type],
-//     ([newValue, newType]) => {
-//       localValue.value = getDefaultValue({ type: newType }, newValue)
-//     },
-//     { immediate: true }
-// )
 
 const showPassword = ref(false)
 
@@ -58,51 +55,59 @@ watch(() => props.modelValue, (val) => localValue.value = val, {deep: true})
   <div class="mb-4">
     <label v-if="field.type !== 'boolean'" class="block text-sm font-medium mb-1">{{ field.label }}</label>
 
-    <!-- string / number -->
-    <input v-if="['string','number'].includes(field.type)"
+    <!-- string -->
+    <template v-if="field.type === 'string'">
+      <!-- email -->
+      <input v-if="field.format === 'email'"
+             v-model="localValue"
+             type="email"
+             :placeholder="field.placeholder || 'example@email.test'"
+             class="border border-gray-300 rounded px-2 py-1 w-full"/>
+
+      <!-- url -->
+      <input v-else-if="field.format === 'url'"
+             v-model="localValue"
+             type="url"
+             :placeholder="field.placeholder || 'https://example.com'"
+             spellcheck="false"
+             pattern="https?://.*"
+             class="border border-gray-300 rounded px-2 py-1 w-full"/>
+
+      <!-- password -->
+      <div v-else-if="field.format === 'password'" class="relative">
+        <input v-model="localValue"
+               :type="showPassword ? 'text' : 'password'"
+               :placeholder="field.placeholder"
+               class="border border-gray-300 rounded px-2 py-1 w-full pr-8"/>
+        <button type="button"
+                @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"
+                tabindex="-1">
+          <icon-eye v-if="showPassword" class="h-5 w-5"/>
+          <icon-eye-closed v-else class="h-5 w-5"/>
+        </button>
+      </div>
+
+      <!-- textarea -->
+      <textarea v-else-if="field.format === 'textarea' "
+                v-model="localValue"
+                :placeholder="field.placeholder"
+                class="border border-gray-300 rounded px-2 py-1 w-full"></textarea>
+
+      <!-- plain string (default) -->
+      <input v-else
+             v-model="localValue"
+             type="text"
+             :placeholder="field.placeholder"
+             class="border border-gray-300 rounded px-2 py-1 w-full"/>
+    </template>
+
+    <!-- number -->
+    <input v-else-if="field.type === 'number'"
            v-model="localValue"
-           :type="field.type === 'number' ? 'number' : 'text'"
+           type="number"
            :placeholder="field.placeholder"
            class="border border-gray-300 rounded px-2 py-1 w-full"/>
-
-    <!-- email -->
-    <input v-else-if="field.type === 'email'"
-           v-model="localValue"
-           type="email"
-           :placeholder="field.placeholder || 'example@email.test'"
-           class="border border-gray-300 rounded px-2 py-1 w-full"/>
-
-    <!-- url -->
-    <input v-else-if="field.type === 'url'"
-           v-model="localValue"
-           type="url"
-           :placeholder="field.placeholder || 'https://example.com'"
-           spellcheck="false"
-           pattern="https?://.*"
-           class="border border-gray-300 rounded px-2 py-1 w-full"/>
-
-    <!-- password with toggle -->
-    <div v-else-if="field.type === 'password'" class="relative">
-      <input
-          v-model="localValue"
-          :type="showPassword ? 'text' : 'password'"
-          :placeholder="field.placeholder"
-          class="border border-gray-300 rounded px-2 py-1 w-full pr-8"
-      />
-      <button type="button"
-              @click="showPassword = !showPassword"
-              class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"
-              tabindex="-1">
-        <icon-eye v-if="showPassword" class="h-5 w-5"/>
-        <icon-eye-closed v-else class="h-5 w-5"/>
-      </button>
-    </div>
-
-    <!-- textarea / text -->
-    <textarea v-else-if="['textarea','text'].includes(field.type)"
-              v-model="localValue"
-              :placeholder="field.placeholder"
-              class="border border-gray-300 rounded px-2 py-1 w-full"></textarea>
 
     <!-- select -->
     <select v-else-if="field.type === 'select'"
@@ -120,6 +125,22 @@ watch(() => props.modelValue, (val) => localValue.value = val, {deep: true})
       <input type="checkbox" v-model="localValue" class="mr-2"/>
       {{ field.label }}
     </label>
+
+    <!-- Add this in your template where other field types are handled -->
+    <template v-else-if="field.type === 'file'">
+      <input
+          type="file"
+          @change="onFileChange"
+          class="border border-gray-300 rounded px-2 py-1 w-full"
+      />
+      <div v-if="localValue && localValue.path" class="mt-2">
+        Selected File:
+        <a :href="localValue.path" target="_blank" class="text-blue-500 hover:underline">
+          {{ localValue.name }}
+        </a>
+      </div>
+
+    </template>
 
     <!-- array -->
     <array-editor v-else-if="field.type === 'array'" v-model:value="localValue" :schema="field"

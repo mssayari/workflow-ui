@@ -57,6 +57,74 @@ export const useWorkflowStore = defineStore('workflow', () => {
         isInnerAction.value = false
     }
 
+
+    const objectToFormData = (obj, form = new FormData(), namespace = '') => {
+        for (let key in obj) {
+            if (!obj.hasOwnProperty(key)) continue;
+            let formKey = namespace ? `${namespace}[${key}]` : key;
+            let value = obj[key];
+
+            if (value instanceof File) {
+                form.append(formKey, value);
+            } else if (typeof value === 'object' && value !== null) {
+                objectToFormData(value, form, formKey);
+            } else {
+                form.append(formKey, value ?? '');
+            }
+        }
+        return form;
+    };
+
+    const hasFile = (obj) => {
+        if (obj instanceof File) return true;
+        if (typeof obj === 'object' && obj !== null) {
+            return Object.values(obj).some(v => hasFile(v));
+        }
+        return false;
+    };
+
+
+    const saveAction = (actionData) => {
+        return new Promise((resolve, reject) => {
+            let payload = actionData;
+            let isMultipart = hasFile(actionData.config);
+
+            if (isMultipart) {
+                payload = objectToFormData(actionData);
+            }
+
+            const request = selectedAction.value && !isInnerAction.value
+                ? updateAction(payload, isMultipart)
+                : (() => {
+                    const newAction = {...actionData};
+                    if (isInnerAction.value) {
+                        newAction.parent_id = selectedAction.value.id;
+                    }
+                    let finalPayload = isMultipart ? objectToFormData(newAction) : newAction;
+                    return createAction(finalPayload, isMultipart).then((createdAction) => {
+                        if (previousActionId.value) {
+                            return linkAction(createdAction, previousActionId.value).then(() => {
+                                console.log('Action Linked successfully');
+                                return createdAction;
+                            });
+                        }
+                        return createdAction;
+                    });
+                })();
+
+            request
+                .then(() => {
+                    resolve(true);
+                    closeActionModal();
+                })
+                .catch((error) => {
+                    console.log('Error saving action:', error);
+                    reject(error.response?.data || error);
+                });
+        });
+    };
+
+    /*
     const saveAction = (actionData) => {
         return new Promise((resolve, reject) => {
             if (selectedAction.value && !isInnerAction.value) {
@@ -88,6 +156,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             }
         });
     }
+     */
 
     const saveTrigger = (triggerData) => {
         return new Promise((resolve, reject) => {

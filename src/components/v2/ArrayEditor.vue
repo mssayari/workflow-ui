@@ -51,6 +51,9 @@ const updateValue = (index, newValue, format) => {
     case 'number':
       parsedValue = parseFloat(newValue) || 0
       break
+    case 'boolean':
+      parsedValue = !!newValue
+      break
     default:
       parsedValue = newValue
   }
@@ -79,33 +82,67 @@ onMounted(() => {
     <div v-for="(item, index) in localValue" :key="index"
          class="flex items-start space-x-2 mb-2 border border-gray-300 rounded-md p-2">
      <div class="w-full">
-       <!-- if format is date "yyyy-mm-dd"-->
-       <input
-           v-if="schema.items.type === 'date'"
+
+    <!-- string types with format -->
+    <template v-if="schema.items.type === 'string'">
+      <!-- email -->
+      <input v-if="schema.items.format === 'email'"
+             type="email"
+             :value="localValue[index]"
+             @input="updateValue(index, $event.target.value, 'string')"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+
+      <!-- url -->
+      <input v-else-if="schema.items.format === 'url'"
+             type="url"
+             :value="localValue[index]"
+             @input="updateValue(index, $event.target.value, 'string')"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+
+      <!-- password -->
+      <input v-else-if="schema.items.format === 'password'"
+             type="password"
+             :value="localValue[index]"
+             @input="updateValue(index, $event.target.value, 'string')"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+
+      <!-- date -->
+      <input v-else-if="schema.items.format === 'date'"
            type="date"
            :value="localValue[index] instanceof Date ? localValue[index].toISOString().split('T')[0] : localValue[index]"
            @input="updateValue(index, $event.target.value, 'date')"
-           class="w-full px-3 py-2 border border-gray-300 rounded-md"
-       />
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
 
-       <!-- if format is number -->
-       <input
-           v-else-if="schema.items.type === 'number'"
+      <!-- textarea -->
+      <textarea v-else-if="schema.items.format === 'textarea'"
+                :value="localValue[index]"
+                @input="updateValue(index, $event.target.value, 'string')"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+
+      <!-- default string -->
+      <input v-else
+             type="text"
+             :value="localValue[index]"
+             @input="updateValue(index, $event.target.value, 'string')"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+    </template>
+
+    <!-- number -->
+    <input v-else-if="schema.items.type === 'number'"
            type="number"
            :value="localValue[index]"
            @input="updateValue(index, $event.target.value, 'number')"
-           class="w-full px-3 py-2 border border-gray-300 rounded-md"
-       />
+           class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
 
-       <!-- if format is email -->
-       <input
-           v-else-if="schema.items.type === 'email'"
-           type="email"
-           :value="localValue[index]"
-           @input="updateValue(index, $event.target.value, 'email')"
-           class="w-full px-3 py-2 border border-gray-300 rounded-md"
-       />
+    <!-- boolean -->
+    <label v-else-if="schema.items.type === 'boolean'" class="flex items-center space-x-2">
+      <input type="checkbox"
+             :checked="localValue[index]"
+             @change="updateValue(index, $event.target.checked, 'boolean')"/>
+      <span>{{ schema.items.label }}</span>
+    </label>
 
+    <!-- object -->
        <div v-else-if="schema.items.type === 'object'">
          <div v-for="prop in schema.items.properties" :key="prop.name">
            <schema-field
@@ -118,14 +155,13 @@ onMounted(() => {
          </div>
        </div>
 
-       <!-- else treat as string -->
-       <input
-           v-else
+    <!-- fallback -->
+    <input v-else
            v-model="localValue[index]"
            placeholder="Value"
-           class="w-full px-3 py-2 border border-gray-300 rounded-md"
-       />
-       <!-- error -->
+           class="w-full px-3 py-2 border border-gray-300 rounded-md"/>
+
+    <!-- error handling same as before -->
        <div v-if="errors[path + schema.name + '['+index+']']" class="text-red-500 text-sm">
          {{ errors[path + schema.name+ '['+index+']'][0] }}
        </div>

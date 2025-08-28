@@ -122,7 +122,7 @@ watch(() => workflowStore.workflow, (newWorkflow) => {
     generateNodesAndEdges()
     setTimeout(() => {
       layoutGraph('TB')
-    }, 100)
+    }, 500)
   }
 }, {deep: true})
 
